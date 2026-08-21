@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>حاشية — تدوين المعرفة القانونية</title>
+<meta name="description" content="دفتر شخصي لتدوين الحواشي على مواد الأنظمة السعودية.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%230f0e0d'/><text x='16' y='23' font-size='20' fill='%23fafaf9' text-anchor='middle' font-family='serif'>ح</text></svg>">
+<style>
+/* ══════════════════════════════════════════════════════
+   نظام التصميم — أحادي اللون، شبكة ٤ بكسل، بلا ظلال
+   ══════════════════════════════════════════════════════ */
+:root{
+  --surface:#fafaf9;
+  --elevated:#eeeeed;
+  --ink:#0f0e0d;
+  --muted:#8f8b85;
+  --danger:#7a1f1f;
+  --border-subtle:rgba(51,49,44,.16);
+  --border-strong:rgba(51,49,44,.34);
+  --r:4px;
+  --dur:.15s;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px;
+  --side:224px;
+  --maxw:1200px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--surface);color:var(--ink);
+  font-family:"IBM Plex Sans Arabic",system-ui,-apple-system,sans-serif;
+  font-size:13px;line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none;text-align:inherit}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,h4,h5{font-weight:400}
+ul{list-style:none}
+::selection{background:var(--ink);color:var(--surface)}
+:focus-visible{outline:none;box-shadow:0 0 0 2px var(--muted);border-radius:var(--r)}
+[hidden]{display:none !important}
+
+/* ─── الهيكل ─── */
+.app{display:grid;grid-template-columns:var(--side) 1fr;min-height:100vh}
+.side{
+  border-inline-start:1px solid var(--border-subtle);
+  position:sticky;top:0;height:100vh;z-index:40;
+  display:flex;flex-direction:column;padding:var(--s5) var(--s4);
+  background:var(--surface);
+}
+.main{min-width:0}
+.canvas{max-width:var(--maxw);margin:0 auto;padding:var(--s5) 40px 96px}
+
+/* ─── الهوية والتنقل ─── */
+.brand{font-family:Amiri,serif;font-size:26px;line-height:1;letter-spacing:-.28px}
+.brand small{
+  display:block;font-family:"IBM Plex Sans Arabic",sans-serif;font-size:10px;
+  color:var(--muted);margin-top:6px;line-height:1.4;letter-spacing:0;
+}
+.nav{margin-top:32px;display:flex;flex-direction:column;gap:1px}
+.nav a{
+  display:flex;align-items:center;gap:var(--s2);padding:7px var(--s2);
+  border-radius:var(--r);font-size:12.5px;color:var(--muted);
+  transition:color var(--dur),background var(--dur);
+}
+.nav a:hover{color:var(--ink);background:var(--elevated)}
+.nav a[aria-current="page"]{color:var(--surface);background:var(--ink)}
+.nav .ico{width:14px;text-align:center;font-size:11px;opacity:.85;flex:none}
+.nav .n{margin-inline-start:auto;font-size:10px;opacity:.6;font-variant-numeric:tabular-nums}
+.side-foot{margin-top:auto;padding-top:var(--s4);border-top:1px solid var(--border-subtle)}
+.saver{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted)}
+.pip{width:5px;height:5px;border-radius:50%;background:var(--muted);flex:none;transition:background var(--dur)}
+.saver[data-state="busy"] .pip{background:var(--danger)}
+.saver[data-state="done"] .pip{background:var(--ink)}
+.side-foot button{display:block;font-size:10px;color:var(--muted);margin-top:var(--s2)}
+.side-foot button:hover{color:var(--ink);text-decoration:underline;text-underline-offset:2px}
+
+/* ─── ترويسات ─── */
+.eyebrow{
+  font-size:11px;font-weight:500;color:var(--muted);
+  display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s3);
+}
+.eyebrow::after{content:"";flex:1;height:1px;background:var(--border-subtle)}
+.phead{
+  display:flex;align-items:flex-end;gap:var(--s4);flex-wrap:wrap;
+  margin-bottom:var(--s5);padding-bottom:var(--s4);
+  border-bottom:1px solid var(--border-strong);
+}
+.phead > div:first-child{min-width:0;flex:1}
+h2,.h2{font-family:Amiri,serif;font-size:28px;line-height:1.15;letter-spacing:-.28px}
+.lede{color:var(--muted);font-size:12.5px;max-width:60ch;margin-top:6px}
+.crumb{font-size:11px;color:var(--muted);display:inline-block;margin-bottom:var(--s3)}
+.crumb:hover{color:var(--ink)}
+
+/* ─── أزرار ─── */
+.btn{
+  background:var(--ink);color:var(--surface);border-radius:var(--r);
+  padding:7px var(--s3);font-size:12px;font-weight:500;
+  transition:opacity var(--dur);white-space:nowrap;
+}
+.btn:hover{opacity:.84}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--border-strong)}
+.btn.ghost:hover{background:var(--elevated);opacity:1}
+.btn.ghost:disabled:hover{background:transparent}
+.btn.sm{padding:4px var(--s2);font-size:11px}
+
+/* ─── حقول ─── */
+label{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-bottom:5px}
+input,textarea,select{
+  width:100%;background:#fff;border:1px solid var(--border-subtle);
+  border-radius:6px;padding:var(--s2) var(--s3);font-size:13px;line-height:1.6;
+  font-family:inherit;
+}
+textarea{resize:vertical}
+input:focus,textarea:focus,select:focus{
+  outline:none;border-color:var(--border-strong);box-shadow:0 0 0 2px var(--muted);
+}
+input::placeholder,textarea::placeholder{color:var(--muted)}
+.field{margin-bottom:var(--s3)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s3)}
+
+/* ─── بطاقات ─── */
+.card{
+  background:#fff;border:1px solid var(--border-subtle);border-radius:var(--r);
+  padding:var(--s4);margin-bottom:var(--s3);transition:border-color var(--dur);
+}
+.card:hover{border-color:var(--border-strong)}
+.card-meta{display:flex;align-items:center;gap:var(--s2);font-size:11px;color:var(--muted);flex-wrap:wrap}
+.card-meta .link{font-weight:500;color:var(--ink)}
+.card-meta .link:hover{text-decoration:underline;text-underline-offset:3px}
+.dot{width:2px;height:2px;border-radius:50%;background:var(--muted);flex:none}
+.spacer{margin-inline-start:auto}
+
+/* ─── سكة نوع الحاشية ─── */
+.note-body{
+  border-inline-start:2px solid var(--ink);padding-inline-start:var(--s3);
+  margin-top:var(--s3);white-space:pre-wrap;word-break:break-word;
+}
+.note[data-type="sharh"]  .note-body{border-inline-start-style:solid}
+.note[data-type="tatbiq"] .note-body{border-inline-start-style:double;border-inline-start-width:4px}
+.note[data-type="sual"]   .note-body{border-inline-start-style:dotted;border-inline-start-width:3px}
+.tlabel{font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.3px}
+
+/* ─── نص المادة ─── */
+.matn{
+  font-family:Amiri,serif;font-size:20px;line-height:1.8;
+  background:#fff;border:1px solid var(--border-subtle);
+  border-radius:var(--r);padding:var(--s4) var(--s5);white-space:pre-line;
+}
+.matn.sm{font-size:17px;background:var(--surface);padding:var(--s3) var(--s4)}
+
+/* ─── وسوم المواضيع ─── */
+.topic{
+  display:inline-block;font-size:11px;color:var(--muted);
+  border:1px solid var(--border-subtle);border-radius:var(--r);
+  padding:1px 7px;transition:all var(--dur);
+}
+.topic:hover{border-color:var(--border-strong);color:var(--ink)}
+.topic.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.topics{display:flex;flex-wrap:wrap;gap:var(--s1);margin-top:var(--s3)}
+.tag-inline{font-weight:500;border-bottom:1px dashed var(--border-strong);cursor:pointer}
+.tag-inline:hover{background:var(--elevated)}
+
+/* ─── مرشِّحات ─── */
+.chips{display:flex;flex-wrap:wrap;gap:var(--s1);align-items:center;margin-bottom:var(--s4)}
+.chip{
+  padding:5px var(--s3);border:1px solid var(--border-subtle);border-radius:var(--r);
+  font-size:11px;font-weight:500;color:var(--muted);transition:all var(--dur);
+}
+.chip:hover{border-color:var(--border-strong);color:var(--ink)}
+.chip.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+
+/* ─── المحرِّر ─── */
+.composer{border:1px solid var(--border-strong);border-radius:var(--r);background:#fff;padding:var(--s4)}
+.composer-wrap{position:relative}
+.composer textarea{border:none;padding:0;font-size:13.5px;min-height:76px}
+.composer textarea:focus{box-shadow:none}
+.composer-foot{
+  display:flex;align-items:center;gap:var(--s2);margin-top:var(--s3);
+  padding-top:var(--s3);border-top:1px solid var(--border-subtle);flex-wrap:wrap;
+}
+.composer-foot select{width:auto;padding:5px var(--s2);font-size:11.5px;border-radius:var(--r)}
+.composer-hint{font-size:10.5px;color:var(--muted)}
+
+/* قائمة المواضيع المنسدلة */
+.ac{
+  position:absolute;z-index:30;inset-inline-start:0;inset-inline-end:0;
+  background:#fff;border:1px solid var(--border-strong);border-radius:var(--r);
+  max-height:196px;overflow-y:auto;
+}
+.ac li{
+  padding:6px var(--s3);font-size:12px;display:flex;align-items:center;gap:var(--s2);
+  cursor:pointer;border-top:1px solid var(--border-subtle);
+}
+.ac li:first-child{border-top:none}
+.ac li[aria-selected="true"]{background:var(--ink);color:var(--surface)}
+.ac li .n{margin-inline-start:auto;font-size:10px;opacity:.6}
+.ac .new{color:var(--muted);font-style:normal}
+.ac li[aria-selected="true"] .new{color:var(--surface);opacity:.75}
+
+/* ─── لوحة الرئيسية ─── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s3);margin-bottom:var(--s5)}
+.stat{border:1px solid var(--border-subtle);border-radius:var(--r);padding:var(--s3);background:#fff}
+.stat b{display:block;font-family:Amiri,serif;font-size:28px;line-height:1.15;font-weight:400}
+.stat span{font-size:10.5px;color:var(--muted)}
+.dash{display:grid;grid-template-columns:1fr 300px;gap:40px;align-items:start}
+.box{border:1px solid var(--border-subtle);border-radius:var(--r);padding:var(--s4);margin-bottom:var(--s3);background:#fff}
+.box h4{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:var(--s3)}
+.row{
+  display:flex;justify-content:space-between;align-items:baseline;gap:var(--s2);
+  padding:6px 0;border-top:1px solid var(--border-subtle);font-size:12px;width:100%;
+}
+.row:first-of-type{border-top:none;padding-top:0}
+.row:hover .rl{text-decoration:underline;text-underline-offset:3px}
+.rl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row b{font-family:Amiri,serif;font-size:17px;font-weight:400;flex:none}
+
+/* ─── بطاقة تشريع ─── */
+.law-card{display:block;width:100%}
+.law-title{font-family:Amiri,serif;font-size:24px;line-height:1.2;letter-spacing:-.28px;margin-top:6px}
+.law-card:hover .law-title{text-decoration:underline;text-underline-offset:4px}
+.meta-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+  gap:0;border:1px solid var(--border-subtle);border-radius:var(--r);background:#fff;overflow:hidden;
+}
+.meta-grid div{padding:var(--s3) var(--s4);border-inline-start:1px solid var(--border-subtle)}
+.meta-grid div:first-child{border-inline-start:none}
+.meta-grid dt{font-size:10.5px;color:var(--muted);margin-bottom:3px}
+.meta-grid dd{font-size:13px;font-weight:500}
+.status{display:inline-flex;align-items:center;gap:5px;font-size:11px}
+.status::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--ink)}
+.status[data-s="ملغى"]{color:var(--danger)}
+.status[data-s="ملغى"]::before{background:var(--danger)}
+.status[data-s="معدّل"]::before{background:var(--muted)}
+
+/* ─── قائمة المواد ─── */
+.art-row{
+  display:flex;align-items:baseline;gap:var(--s3);width:100%;
+  padding:var(--s2) var(--s3);border-top:1px solid var(--border-subtle);
+  transition:background var(--dur);
+}
+.art-row:first-of-type{border-top:none}
+.art-row:hover{background:var(--elevated)}
+.art-no{font-family:Amiri,serif;font-size:17px;flex:none;min-width:46px}
+.art-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
+.art-n{font-size:10.5px;color:var(--muted);flex:none}
+.chapter{font-size:11px;font-weight:600;color:var(--muted);padding:var(--s3) var(--s3) var(--s2)}
+
+/* ─── تنقل المواد ─── */
+.pager{display:flex;gap:var(--s2);align-items:center;margin-top:var(--s5)}
+.pager .pos{font-size:11px;color:var(--muted);margin-inline-start:auto}
+
+/* ─── حالات ونوافذ ─── */
+.empty{border:1px dashed var(--border-strong);border-radius:var(--r);padding:36px var(--s5);text-align:center}
+.empty p{font-size:12px;color:var(--muted);margin:var(--s2) auto 0;max-width:46ch}
+.empty .btn{margin-top:var(--s4)}
+.modal{
+  position:fixed;inset:0;z-index:100;background:rgba(15,14,13,.42);
+  display:flex;align-items:flex-start;justify-content:center;padding:7vh var(--s5) var(--s5);
+}
+.sheet{
+  background:var(--surface);border-radius:var(--r);padding:var(--s5);
+  max-width:640px;width:100%;max-height:86vh;overflow-y:auto;
+}
+.sheet h3{font-family:Amiri,serif;font-size:26px;line-height:1.15;margin-bottom:var(--s4)}
+.sheet-foot{display:flex;gap:var(--s2);align-items:center;margin-top:var(--s4)}
+.sheet-foot .del{margin-inline-start:auto;font-size:11px;color:var(--danger)}
+.sheet-foot .del:hover{text-decoration:underline;text-underline-offset:3px}
+.toast{
+  position:fixed;inset-block-end:var(--s5);inset-inline-start:50%;transform:translateX(50%);
+  background:var(--ink);color:var(--surface);padding:var(--s2) var(--s4);
+  border-radius:var(--r);font-size:12px;z-index:120;
+}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ─── التكيّف ─── */
+@media (max-width:1000px){
+  .dash{grid-template-columns:1fr;gap:0}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .canvas{padding:var(--s5) var(--s5) 80px}
+  .grid3{grid-template-columns:1fr 1fr}
+}
+@media (max-width:640px){
+  .app{grid-template-columns:1fr}
+  .side{
+    position:sticky;top:0;height:auto;flex-direction:row;align-items:center;
+    gap:var(--s3);padding:var(--s3) var(--s4);border-inline-start:none;
+    border-bottom:1px solid var(--border-subtle);overflow-x:auto;
+  }
+  .brand small{display:none}
+  .nav{margin-top:0;flex-direction:row;gap:2px}
+  .nav a{padding:6px var(--s2);white-space:nowrap}
+  .nav .n{display:none}
+  .side-foot{margin-top:0;padding-top:0;border-top:none;margin-inline-start:auto}
+  .side-foot button{display:none}
+  .canvas{padding:var(--s4) var(--s4) 64px}
+  .grid2,.grid3{grid-template-columns:1fr}
+  h2,.h2{font-size:24px}
+  .matn{font-size:18px;padding:var(--s4)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+@media print{.side,.composer,.pager{display:none}.app{display:block}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <a class="brand" href="#/home">حاشية<small>تدوين المعرفة القانونية</small></a>
+    <nav class="nav" id="nav" aria-label="التنقل الرئيسي"></nav>
+    <div class="side-foot">
+      <div class="saver" id="saver" data-state="idle" role="status" aria-live="polite">
+        <span class="pip" aria-hidden="true"></span><span id="saver-text">جاهز</span>
+      </div>
+      <button type="button" data-action="export">تصدير نسخة احتياطية</button>
+      <button type="button" data-action="import">استيراد ملف</button>
+    </div>
+  </aside>
+  <main class="main"><div class="canvas" id="view"></div></main>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" hidden>
+  <div class="sheet" id="sheet"></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<input type="file" id="file-input" accept="application/json,.json" hidden>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   حاشية — تدوين المعرفة القانونية الشخصية
+   ------------------------------------------------------------------
+   المركز هو التشريع. المستخدم يستعرض النظام مادةً مادة، ويكتب عند كل
+   مادة حاشية تُربط بها تلقائياً. المواضيع تُكتب داخل النص بعلامة #
+   وتُشتق منه، فلا يوجد مصدران للحقيقة.
+
+   البنية:
+     Store   التخزين المحلي والحفظ التلقائي
+     Model   قراءة البيانات واشتقاقها (مواضيع، ترتيب، عدّادات)
+     Router  التوجيه عبر hash
+     Views   صفحات: الرئيسية · الحواشي · التشريعات · تشريع · مادة
+     Editor  نوافذ إضافة وتحرير التشريعات والمواد
+     Compose المحرِّر مع الإكمال التلقائي للمواضيع
+   ══════════════════════════════════════════════════════════════════ */
+'use strict';
+
+const App = (() => {
+
+/* ═══════════ ثوابت ═══════════ */
+
+/** أنواع الحواشي — ثلاثة فقط في هذه المرحلة. */
+const NOTE_TYPES = Object.freeze({
+  sharh:  'شرح',
+  tatbiq: 'تطبيق',
+  sual:   'سؤال',
+});
+
+/** أنواع الأدوات التشريعية. */
+const LAW_KINDS = Object.freeze([
+  'نظام', 'لائحة تنفيذية', 'قرار', 'تعميم', 'قواعد', 'دليل',
+]);
+
+/** حالات سريان التشريع. */
+const LAW_STATUS = Object.freeze(['ساري', 'معدّل', 'ملغى']);
+
+/** الحد الأدنى لطول الحاشية — يمنع الحواشي الفارغة. */
+const MIN_NOTE_LENGTH = 5;
+
+/** مهلة تأجيل الحفظ التلقائي بالمللي ثانية. */
+const SAVE_DEBOUNCE_MS = 400;
+
+/** مفتاح التخزين. الرقم يتغير عند أي تغيير غير متوافق في البنية. */
+const STORAGE_KEY = 'hashiya.store.v3';
+
+/** يطابق موضوعاً داخل نص الحاشية: # يليه حروف أو أرقام أو شرطة سفلية. */
+const TOPIC_PATTERN = /#([\p{L}\p{N}_]+)/gu;
+
+
+/* ═══════════ أدوات عامة ═══════════ */
+
+const $  = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+/** تهريب HTML. كل نص من المستخدم يمرّ من هنا قبل الإدراج. */
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[ch]);
+}
+
+/** معرّف فريد قصير مقروء. */
+function uid(prefix) {
+  return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+/** الموضوع يُخزَّن بشرطة سفلية بدل المسافة ليكون رمزاً واحداً لا يلتبس بالنص. */
+const normalizeTopic = raw => String(raw).trim().replace(/\s+/g, '_');
+const displayTopic   = topic => String(topic).replace(/_/g, ' ');
+
+/** تاريخ نسبي مختصر. */
+function timeAgo(timestamp) {
+  const days = Math.floor((Date.now() - timestamp) / 86400000);
+  if (days < 1)  return 'اليوم';
+  if (days === 1) return 'أمس';
+  if (days < 30)  return `قبل ${days} يوماً`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `قبل ${months} شهراً`;
+  return `قبل ${Math.floor(months / 12)} سنة`;
+}
+
+/** ترتيب المواد رقمياً مع دعم الأرقام العربية والهندية. */
+const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+function articleSortKey(no) {
+  const latin = String(no).replace(/[٠-٩]/g, d => ARABIC_DIGITS.indexOf(d));
+  const num = parseInt(latin.replace(/[^\d]/g, ''), 10);
+  return Number.isFinite(num) ? num : Number.MAX_SAFE_INTEGER;
+}
+
+function toast(message) {
+  const el = $('#toast');
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { el.hidden = true; }, 2600);
+}
+
+
+/* ═══════════ التخزين والحفظ التلقائي ═══════════ */
+
+const Store = (() => {
+  /** البنية الابتدائية عند أول تشغيل. */
+  const seed = () => ({
+    schema: 3,
+    laws: [{
+      id: 'law_labor',
+      title: 'نظام العمل',
+      kind: 'نظام',
+      instrument: 'مرسوم ملكي رقم م/٥١',
+      issuedAt: '٢٣ / ٨ / ١٤٢٦هـ',
+      gazette: 'أم القرى — العدد ٤٠٦٨',
+      publishedAt: '٢٧ / ٩ / ١٤٢٦هـ',
+      effectiveAt: 'بعد ١٨٠ يوماً من النشر',
+      status: 'معدّل',
+      authority: 'وزارة الموارد البشرية والتنمية الاجتماعية',
+      summary: 'ينظم العلاقة بين صاحب العمل والعامل في القطاع الخاص.',
+    }],
+    articles: [
+      { id: 'art_l80', lawId: 'law_labor', no: '٨٠', chapter: 'الباب السادس — انتهاء عقد العمل',
+        title: 'الفسخ دون مكافأة ولا إشعار ولا تعويض',
+        text: 'لا يجوز لصاحب العمل فسخ العقد دون مكافأة أو إشعار أو تعويض إلا في حالات محددة، منها عدم أداء العامل التزاماته الجوهرية أو عدم إطاعته الأوامر المشروعة رغم إنذاره كتابةً. ويشترط أن يُمكَّن العامل من إبداء أسباب اعتراضه على الفسخ.' },
+      { id: 'art_l84', lawId: 'law_labor', no: '٨٤', chapter: 'الباب السادس — انتهاء عقد العمل',
+        title: 'مكافأة نهاية الخدمة',
+        text: 'إذا انتهت العلاقة العمالية وجب على صاحب العمل أن يدفع للعامل مكافأة عن مدة خدمته: أجر نصف شهر عن كل سنة من السنوات الخمس الأولى، وأجر شهر عن كل سنة من السنوات التالية. ويُتخذ الأجر الأخير أساساً لحسابها.' },
+      { id: 'art_l77', lawId: 'law_labor', no: '٧٧', chapter: 'الباب السادس — انتهاء عقد العمل',
+        title: 'التعويض عن الإنهاء لسبب غير مشروع',
+        text: 'إذا أُنهي العقد لسبب غير مشروع استحق الطرف المتضرر التعويض المتفق عليه. فإن لم يوجد اتفاق كان التعويض أجر خمسة عشر يوماً عن كل سنة خدمة في العقد غير محدد المدة، وأجر المدة الباقية في العقد محدد المدة، على ألا يقل عن أجر شهرين.' },
+      { id: 'art_l61', lawId: 'law_labor', no: '٦١', chapter: 'الباب الخامس — التزامات الطرفين',
+        title: 'التزامات صاحب العمل',
+        text: 'على صاحب العمل أن يمتنع عن كل ما من شأنه المساس بكرامة العامل، وأن يمكّنه من أداء عمله، وأن يوفر له بيئة عمل آمنة.' },
+    ],
+    notes: [
+      { id: 'note_seed1', articleId: 'art_l84', type: 'sharh',
+        body: 'الأجر الأخير ليس الراتب الأساسي وحده. البدلات الثابتة المنتظمة — السكن والنقل — تدخل في الحساب، والفرق بين الطريقتين قد يتجاوز ٤٠٪. #الأجر #مكافأة_نهاية_الخدمة',
+        createdAt: Date.now() - 86400000 * 3, updatedAt: Date.now() - 86400000 * 3 },
+      { id: 'note_seed2', articleId: 'art_l80', type: 'tatbiq',
+        body: 'الإنذار الكتابي لا يكفي وجوده في الملف. ثلاثة معايير تُسقطه عملياً: تاريخه، وإثبات وصوله، وارتباطه بالمخالفة ذاتها محل الفصل لا بمخالفة سابقة. #الفصل #الإنذار_الكتابي',
+        createdAt: Date.now() - 86400000 * 5, updatedAt: Date.now() - 86400000 * 5 },
+      { id: 'note_seed3', articleId: 'art_l80', type: 'sual',
+        body: 'تمكين العامل من إبداء اعتراضه: هل يُشترط تحقيق مكتوب موقّع، أم تكفي دعوته وإثبات امتناعه؟ ومن يحمل عبء إثبات الامتناع؟ #الفصل',
+        createdAt: Date.now() - 86400000 * 1, updatedAt: Date.now() - 86400000 * 1 },
+    ],
+  });
+
+  let data;
+  let saveTimer = null;
+  let isDirty = false;
+
+  /** تحميل البيانات مع التحقق من سلامة الشكل. */
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (isValidShape(parsed)) return parsed;
+        console.warn('حاشية: بنية مخزَّنة غير صالحة — استُخدمت البنية الابتدائية.');
+      }
+    } catch (err) {
+      console.warn('حاشية: تعذّرت قراءة التخزين المحلي.', err);
+    }
+    return seed();
+  }
+
+  function isValidShape(value) {
+    return !!value
+      && Array.isArray(value.laws)
+      && Array.isArray(value.articles)
+      && Array.isArray(value.notes);
+  }
+
+  function setSaverState(state, text) {
+    const el = $('#saver');
+    if (!el) return;
+    el.dataset.state = state;
+    $('#saver-text').textContent = text;
+  }
+
+  /** كل تعديل على البيانات يمرّ من هنا. */
+  function commit() {
+    isDirty = true;
+    setSaverState('busy', 'يُحفظ…');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flush, SAVE_DEBOUNCE_MS);
+  }
+
+  /** كتابة فورية إلى التخزين المحلي. */
+  function flush() {
+    if (!isDirty) return;
+    clearTimeout(saveTimer);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      isDirty = false;
+      const time = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+      setSaverState('done', 'حُفظ ' + time);
+    } catch (err) {
+      setSaverState('error', 'تعذّر الحفظ — المساحة ممتلئة');
+      console.error('حاشية: فشل الحفظ.', err);
+    }
+  }
+
+  function replaceAll(next) {
+    if (!isValidShape(next)) throw new Error('بنية الملف غير صالحة');
+    data = next;
+    commit();
+    flush();
+  }
+
+  data = load();
+
+  // ضمان عدم ضياع تعديل عند إغلاق التبويب أو إخفائه.
+  window.addEventListener('beforeunload', flush);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
+
+  return {
+    get data() { return data; },
+    commit, flush, replaceAll, setSaverState,
+  };
+})();
+
+
+/* ═══════════ طبقة القراءة والاشتقاق ═══════════ */
+
+const Model = {
+  law:     id => Store.data.laws.find(l => l.id === id) || null,
+  article: id => Store.data.articles.find(a => a.id === id) || null,
+  note:    id => Store.data.notes.find(n => n.id === id) || null,
+
+  /** مواد تشريع معيّن مرتَّبة رقمياً. */
+  articlesOfLaw(lawId) {
+    return Store.data.articles
+      .filter(a => a.lawId === lawId)
+      .sort((a, b) => articleSortKey(a.no) - articleSortKey(b.no));
+  },
+
+  /** حواشي مادة معيّنة، الأحدث أولاً. */
+  notesOfArticle(articleId) {
+    return Store.data.notes
+      .filter(n => n.articleId === articleId)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  },
+
+  notesCountOfLaw(lawId) {
+    const ids = new Set(this.articlesOfLaw(lawId).map(a => a.id));
+    return Store.data.notes.filter(n => ids.has(n.articleId)).length;
+  },
+
+  /** المواضيع تُشتق من نص الحاشية — لا تُخزَّن، فلا تتعارض مع النص. */
+  topicsOf(note) {
+    const found = String(note.body).matchAll(TOPIC_PATTERN);
+    return [...new Set([...found].map(m => m[1]))];
+  },
+
+  /** كل المواضيع مع عدد استعمالاتها، مرتَّبة تنازلياً. */
+  allTopics() {
+    const counts = new Map();
+    for (const note of Store.data.notes) {
+      for (const topic of this.topicsOf(note)) {
+        counts.set(topic, (counts.get(topic) || 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .map(([topic, count]) => ({ topic, count }))
+      .sort((a, b) => b.count - a.count || a.topic.localeCompare(b.topic, 'ar'));
+  },
+
+  /** المادة السابقة والتالية داخل التشريع نفسه. */
+  neighbors(article) {
+    const list = this.articlesOfLaw(article.lawId);
+    const index = list.findIndex(a => a.id === article.id);
+    return {
+      index,
+      total: list.length,
+      prev: index > 0 ? list[index - 1] : null,
+      next: index >= 0 && index < list.length - 1 ? list[index + 1] : null,
+    };
+  },
+};
+
+
+/* ═══════════ التوجيه ═══════════ */
+
+const NAV_ITEMS = [
+  { key: 'home',  label: 'الرئيسية',  icon: '◈' },
+  { key: 'notes', label: 'الحواشي',   icon: '❝', count: () => Store.data.notes.length },
+  { key: 'laws',  label: 'التشريعات', icon: '§', count: () => Store.data.laws.length },
+];
+
+const Router = (() => {
+  let current = { view: 'home', id: null };
+
+  function parse() {
+    const raw = location.hash.replace(/^#\/?/, '');
+    if (!raw) return { view: 'home', id: null };
+    const [view, id = null] = raw.split('/');
+    return Views[view] ? { view, id } : { view: 'home', id: null };
+  }
+
+  function go(view, id) {
+    const target = '#/' + view + (id ? '/' + id : '');
+    if (location.hash === target) { render(); return; }
+    location.hash = target;
+  }
+
+  function handleChange() {
+    current = parse();
+    State.editingNoteId = null;   // لا يُحمل تحرير حاشية عبر التنقل
+    render();
+    window.scrollTo({ top: 0 });
+  }
+
+  return {
+    get current() { return current; },
+    go,
+    start() {
+      window.addEventListener('hashchange', handleChange);
+      current = parse();
+    },
+  };
+})();
+
+function renderNav() {
+  $('#nav').innerHTML = NAV_ITEMS.map(item => `
+    <a href="#/${item.key}" ${Router.current.view === item.key ? 'aria-current="page"' : ''}>
+      <span class="ico" aria-hidden="true">${item.icon}</span>
+      <span>${item.label}</span>
+      ${item.count ? `<span class="n">${item.count()}</span>` : ''}
+    </a>`).join('');
+}
+
+
+/* ═══════════ مكوّنات مشتركة ═══════════ */
+
+/** يحوّل نص الحاشية إلى HTML آمن مع إبراز المواضيع. */
+function renderNoteBody(body) {
+  return esc(body).replace(TOPIC_PATTERN, (_, topic) =>
+    `<button type="button" class="tag-inline" data-action="filter-topic" data-topic="${esc(topic)}">#${esc(displayTopic(topic))}</button>`
+  );
+}
+
+/**
+ * بطاقة حاشية.
+ * @param {object} note
+ * @param {{showArticle?: boolean}} options
+ */
+function NoteCard(note, options = {}) {
+  const article = Model.article(note.articleId);
+  const law = article ? Model.law(article.lawId) : null;
+  const topics = Model.topicsOf(note);
+
+  return `
+  <article class="card note" data-type="${esc(note.type)}">
+    <div class="card-meta">
+      <span class="tlabel">${esc(NOTE_TYPES[note.type] || note.type)}</span>
+      <span class="dot" aria-hidden="true"></span>
+      ${options.showArticle && article ? `
+        <button type="button" class="link" data-action="open-article" data-id="${esc(article.id)}">
+          ${esc(law ? law.title : '')} · المادة ${esc(article.no)}
+        </button>
+        <span class="dot" aria-hidden="true"></span>` : ''}
+      <span>${timeAgo(note.createdAt)}</span>
+      ${note.updatedAt > note.createdAt ? '<span class="dot" aria-hidden="true"></span><span>مُعدَّلة</span>' : ''}
+      <span class="spacer"></span>
+      <button type="button" class="btn ghost sm" data-action="edit-note" data-id="${esc(note.id)}">تحرير</button>
+    </div>
+    <div class="note-body">${renderNoteBody(note.body)}</div>
+    ${topics.length ? `<div class="topics">${topics.map(t =>
+      `<button type="button" class="topic" data-action="filter-topic" data-topic="${esc(t)}">${esc(displayTopic(t))}</button>`
+    ).join('')}</div>` : ''}
+  </article>`;
+}
+
+function EmptyState(title, message, action) {
+  return `<div class="empty">
+    <div class="h2">${esc(title)}</div>
+    <p>${esc(message)}</p>
+    ${action ? `<button type="button" class="btn" data-action="${esc(action.action)}">${esc(action.label)}</button>` : ''}
+  </div>`;
+}
+
+
+/* ═══════════ المحرِّر: مربع إضافة الحاشية ═══════════ */
+/* مربع بسيط: نص + قائمة نوع + زر حفظ. الموضوع يُكتب داخل النص بعلامة #
+   وتظهر قائمة منسدلة بالمواضيع الموجودة لمنع تكرار العناوين. */
+
+const Compose = (() => {
+  let acItems = [];      // عناصر القائمة المعروضة حالياً
+  let acIndex = 0;       // العنصر المحدَّد
+  let acStart = -1;      // موضع # في النص
+  let acOpen  = false;
+
+  function template(articleId, note) {
+    const isEdit = !!note;
+    return `
+    <div class="composer" data-composer data-article="${esc(articleId)}" ${isEdit ? `data-note="${esc(note.id)}"` : ''}>
+      <div class="composer-wrap">
+        <label class="sr" for="note-input">نص الحاشية</label>
+        <textarea id="note-input" rows="3"
+          placeholder="اكتب حاشيتك على هذه المادة… استخدم # لإضافة موضوع"
+          aria-autocomplete="list" aria-controls="topic-ac">${esc(note ? note.body : '')}</textarea>
+        <ul class="ac" id="topic-ac" role="listbox" hidden></ul>
+      </div>
+      <div class="composer-foot">
+        <label class="sr" for="note-type">نوع الحاشية</label>
+        <select id="note-type">
+          ${Object.entries(NOTE_TYPES).map(([value, label]) =>
+            `<option value="${value}" ${note && note.type === value ? 'selected' : ''}>${label}</option>`).join('')}
+        </select>
+        <button type="button" class="btn" data-action="save-note">${isEdit ? 'احفظ التعديل' : 'أضف الحاشية'}</button>
+        ${isEdit ? `
+          <button type="button" class="btn ghost" data-action="cancel-edit">إلغاء</button>
+          <button type="button" class="btn ghost sm" data-action="delete-note" data-id="${esc(note.id)}"
+            style="color:var(--danger);border-color:var(--danger)">حذف</button>`
+        : '<span class="composer-hint">تُربط تلقائياً بهذه المادة</span>'}
+      </div>
+    </div>`;
+  }
+
+  /** يقرأ الكلمة التي تلي # عند مؤشر الكتابة، إن وُجدت. */
+  function activeToken(textarea) {
+    const caret = textarea.selectionStart;
+    const before = textarea.value.slice(0, caret);
+    const hash = before.lastIndexOf('#');
+    if (hash === -1) return null;
+
+    const query = before.slice(hash + 1);
+    // يُلغى الاقتراح إذا احتوى المقطع على مسافة أو سطر جديد.
+    if (/[\s\n]/.test(query)) return null;
+    // يجب أن تسبق # مسافة أو بداية النص، لا حرف.
+    const charBefore = hash > 0 ? before[hash - 1] : ' ';
+    if (!/[\s\n(«"]/.test(charBefore)) return null;
+
+    return { start: hash, query };
+  }
+
+  function closeAutocomplete() {
+    acOpen = false;
+    acItems = [];
+    acIndex = 0;
+    acStart = -1;
+    const list = $('#topic-ac');
+    if (list) { list.hidden = true; list.innerHTML = ''; }
+  }
+
+  function openAutocomplete(textarea) {
+    const token = activeToken(textarea);
+    if (!token) { closeAutocomplete(); return; }
+
+    const query = token.query.toLowerCase();
+    const existing = Model.allTopics()
+      .filter(t => !query || t.topic.toLowerCase().includes(query))
+      .slice(0, 8);
+
+    const normalized = normalizeTopic(token.query);
+    const isNew = normalized && !existing.some(t => t.topic === normalized);
+
+    acItems = existing.map(t => ({ topic: t.topic, count: t.count, isNew: false }));
+    if (isNew) acItems.push({ topic: normalized, count: 0, isNew: true });
+    if (!acItems.length) { closeAutocomplete(); return; }
+
+    acStart = token.start;
+    acIndex = 0;
+    acOpen = true;
+    paint();
+  }
+
+  function paint() {
+    const list = $('#topic-ac');
+    if (!list) return;
+    list.innerHTML = acItems.map((item, i) => `
+      <li role="option" data-i="${i}" aria-selected="${i === acIndex}">
+        <span>#${esc(displayTopic(item.topic))}</span>
+        ${item.isNew
+          ? '<span class="new n">موضوع جديد</span>'
+          : `<span class="n">${item.count}</span>`}
+      </li>`).join('');
+    list.hidden = false;
+    const active = list.querySelector('[aria-selected="true"]');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+  }
+
+  /** يستبدل المقطع الجاري كتابته بالموضوع المختار. */
+  function accept(textarea, index) {
+    const item = acItems[index];
+    if (!item || acStart < 0) return;
+    const caret = textarea.selectionStart;
+    const inserted = '#' + item.topic + ' ';
+    textarea.value = textarea.value.slice(0, acStart) + inserted + textarea.value.slice(caret);
+    const pos = acStart + inserted.length;
+    textarea.setSelectionRange(pos, pos);
+    closeAutocomplete();
+    textarea.focus();
+  }
+
+  /** لوحة المفاتيح داخل مربع الكتابة. */
+  function onKeyDown(event, textarea) {
+    if (acOpen) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        acIndex = (acIndex + 1) % acItems.length;
+        paint(); return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        acIndex = (acIndex - 1 + acItems.length) % acItems.length;
+        paint(); return;
+      }
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        event.preventDefault();
+        accept(textarea, acIndex); return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeAutocomplete(); return;
+      }
+    }
+    // اختصار الحفظ.
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault();
+      const composer = textarea.closest('[data-composer]');
+      composer?.querySelector('[data-action="save-note"]')?.click();
+    }
+  }
+
+  function save(composer) {
+    const textarea = composer.querySelector('textarea');
+    const body = textarea.value.trim();
+    if (body.length < MIN_NOTE_LENGTH) {
+      toast('اكتب حاشية أطول قليلاً');
+      textarea.focus();
+      return;
+    }
+    const type = composer.querySelector('#note-type').value;
+    const editingId = composer.dataset.note;
+
+    if (editingId) {
+      const note = Model.note(editingId);
+      if (!note) { toast('لم تُعثر الحاشية'); return; }
+      note.body = body;
+      note.type = type;
+      note.updatedAt = Date.now();
+      State.editingNoteId = null;
+      toast('حُفظ التعديل');
+    } else {
+      Store.data.notes.unshift({
+        id: uid('note'),
+        articleId: composer.dataset.article,
+        type,
+        body,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      toast('أُضيفت الحاشية');
+    }
+    Store.commit();
+    closeAutocomplete();
+    render();
+  }
+
+  return { template, openAutocomplete, closeAutocomplete, onKeyDown, accept, save,
+           get isOpen() { return acOpen; },
+           acceptAt(textarea, i) { accept(textarea, i); } };
+})();
+
+
+/* ═══════════ حالة العرض ═══════════ */
+
+const State = {
+  noteTypeFilter: 'all',   // مرشِّح النوع في صفحة الحواشي
+  topicFilter: null,       // مرشِّح الموضوع
+  query: '',               // بحث نصي داخل الحواشي
+  editingNoteId: null,     // الحاشية قيد التحرير
+};
+
+
+/* ═══════════ الصفحات ═══════════ */
+
+const Views = {
+
+  /* ─── الرئيسية ─── */
+  home() {
+    const { laws, articles, notes } = Store.data;
+    const topics = Model.allTopics();
+    const recent = notes.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+    const questions = notes.filter(n => n.type === 'sual').sort((a, b) => b.createdAt - a.createdAt);
+
+    return `
+    <div class="phead">
+      <div>
+        <div class="eyebrow">الرئيسية</div>
+        <h2>دفترك</h2>
+        <p class="lede">التشريع هو المركز. تستعرض النظام مادةً مادة، وتكتب عند كل مادة ما تعلّمته عنها.</p>
+      </div>
+      <button type="button" class="btn" data-action="open-laws">استعرض التشريعات</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b>${laws.length}</b><span>تشريع</span></div>
+      <div class="stat"><b>${articles.length}</b><span>مادة</span></div>
+      <div class="stat"><b>${notes.length}</b><span>حاشية</span></div>
+      <div class="stat"><b>${topics.length}</b><span>موضوع</span></div>
+    </div>
+
+    <div class="dash">
+      <div>
+        <div class="eyebrow">آخر ما كتبت</div>
+        ${recent.length
+          ? recent.map(n => NoteCard(n, { showArticle: true })).join('')
+          : EmptyState('لا حواشي بعد', 'افتح تشريعاً، ثم مادة، واكتب أول حاشية.',
+                       { action: 'open-laws', label: 'استعرض التشريعات' })}
+      </div>
+      <aside>
+        <div class="box">
+          <h4>التشريعات</h4>
+          ${laws.length ? laws.map(law => `
+            <button type="button" class="row" data-action="open-law" data-id="${esc(law.id)}">
+              <span class="rl">${esc(law.title)}</span>
+              <b>${Model.articlesOfLaw(law.id).length}</b>
+            </button>`).join('')
+            : '<p class="lede">لم تُضف تشريعات بعد.</p>'}
+        </div>
+        <div class="box">
+          <h4>أسئلة لم تُحسم (${questions.length})</h4>
+          ${questions.length ? questions.slice(0, 5).map(n => `
+            <button type="button" class="row" data-action="open-article" data-id="${esc(n.articleId)}">
+              <span class="rl">${esc(n.body.slice(0, 56))}…</span>
+            </button>`).join('')
+            : '<p class="lede">لا شيء معلّق.</p>'}
+        </div>
+        <div class="box">
+          <h4>المواضيع</h4>
+          ${topics.length ? `<div class="topics" style="margin-top:0">${topics.slice(0, 14).map(t => `
+            <button type="button" class="topic" data-action="filter-topic" data-topic="${esc(t.topic)}">
+              ${esc(displayTopic(t.topic))} · ${t.count}
+            </button>`).join('')}</div>`
+            : '<p class="lede">اكتب # داخل أي حاشية لإنشاء موضوع.</p>'}
+        </div>
+      </aside>
+    </div>`;
+  },
+
+  /* ─── الحواشي ─── */
+  notes() {
+    const query = State.query.trim();
+    let list = Store.data.notes.slice().sort((a, b) => b.createdAt - a.createdAt);
+
+    if (State.noteTypeFilter !== 'all') list = list.filter(n => n.type === State.noteTypeFilter);
+    if (State.topicFilter) list = list.filter(n => Model.topicsOf(n).includes(State.topicFilter));
+    if (query) list = list.filter(n => n.body.includes(query));
+
+    const counts = {};
+    for (const n of Store.data.notes) counts[n.type] = (counts[n.type] || 0) + 1;
+    const topics = Model.allTopics();
+
+    return `
+    <div class="phead">
+      <div>
+        <div class="eyebrow">الحواشي</div>
+        <h2>كل ما علّقته</h2>
+        <p class="lede">كل حاشية مرتبطة بمادتها. اضغط على المادة للعودة إلى نصها.</p>
+      </div>
+    </div>
+
+    <div class="field" style="max-width:420px">
+      <label for="notes-search">بحث في نصوص الحواشي</label>
+      <input id="notes-search" type="search" value="${esc(State.query)}" placeholder="اكتب كلمة…" autocomplete="off">
+    </div>
+
+    <div class="chips">
+      <button type="button" class="chip ${State.noteTypeFilter === 'all' ? 'on' : ''}"
+        data-action="filter-type" data-type="all">الكل (${Store.data.notes.length})</button>
+      ${Object.entries(NOTE_TYPES).filter(([k]) => counts[k]).map(([key, label]) => `
+        <button type="button" class="chip ${State.noteTypeFilter === key ? 'on' : ''}"
+          data-action="filter-type" data-type="${key}">${label} (${counts[key]})</button>`).join('')}
+    </div>
+
+    ${topics.length ? `<div class="topics" style="margin:-8px 0 20px">
+      ${State.topicFilter ? `<button type="button" class="topic on" data-action="filter-topic" data-topic="${esc(State.topicFilter)}">
+        ${esc(displayTopic(State.topicFilter))} ×</button>`
+      : topics.slice(0, 12).map(t => `
+        <button type="button" class="topic" data-action="filter-topic" data-topic="${esc(t.topic)}">
+          ${esc(displayTopic(t.topic))} · ${t.count}</button>`).join('')}
+    </div>` : ''}
+
+    ${list.length
+      ? list.map(n => NoteCard(n, { showArticle: true })).join('')
+      : EmptyState('لا حواشي مطابقة', 'غيّر المرشِّح أو امسح البحث.')}`;
+  },
+
+  /* ─── قائمة التشريعات ─── */
+  laws() {
+    const { laws } = Store.data;
+    return `
+    <div class="phead">
+      <div>
+        <div class="eyebrow">التشريعات</div>
+        <h2>الأنظمة واللوائح</h2>
+        <p class="lede">افتح تشريعاً لتستعرض بياناته ومواده، ثم علّق على ما تشاء منها.</p>
+      </div>
+      <button type="button" class="btn" data-action="new-law">تشريع جديد</button>
+    </div>
+
+    ${laws.length ? laws.map(law => {
+      const articleCount = Model.articlesOfLaw(law.id).length;
+      const noteCount = Model.notesCountOfLaw(law.id);
+      return `
+      <div class="card">
+        <button type="button" class="law-card" data-action="open-law" data-id="${esc(law.id)}">
+          <div class="card-meta">
+            <span class="tlabel">${esc(law.kind || '—')}</span>
+            <span class="dot" aria-hidden="true"></span>
+            <span class="status" data-s="${esc(law.status || '')}">${esc(law.status || '—')}</span>
+            <span class="dot" aria-hidden="true"></span>
+            <span>${esc(law.instrument || '—')}</span>
+          </div>
+          <div class="law-title">${esc(law.title)}</div>
+          ${law.summary ? `<p class="lede">${esc(law.summary)}</p>` : ''}
+        </button>
+        <div class="topics">
+          <span class="topic" style="cursor:default">${articleCount} مادة</span>
+          <span class="topic" style="cursor:default">${noteCount} حاشية</span>
+        </div>
+      </div>`;
+    }).join('')
+    : EmptyState('لا تشريعات بعد', 'أضف أول تشريع، ثم أضف مواده.',
+                 { action: 'new-law', label: 'تشريع جديد' })}`;
+  },
+
+  /* ─── صفحة تشريع: البيانات ثم المواد ─── */
+  law() {
+    const law = Model.law(Router.current.id);
+    if (!law) return Views.laws();
+
+    const articles = Model.articlesOfLaw(law.id);
+
+    // تجميع المواد تحت الأبواب مع الحفاظ على الترتيب الرقمي.
+    const groups = [];
+    for (const article of articles) {
+      const key = article.chapter || '';
+      const last = groups[groups.length - 1];
+      if (last && last.key === key) last.items.push(article);
+      else groups.push({ key, items: [article] });
+    }
+
+    const meta = [
+      ['النوع', law.kind],
+      ['أداة الإصدار', law.instrument],
+      ['تاريخ الإصدار', law.issuedAt],
+      ['النشر', law.gazette],
+      ['تاريخ النشر', law.publishedAt],
+      ['تاريخ السريان', law.effectiveAt],
+      ['الجهة المختصة', law.authority],
+    ].filter(([, value]) => value);
+
+    return `
+    <button type="button" class="crumb" data-action="open-laws">← التشريعات</button>
+    <div class="phead">
+      <div>
+        <div class="eyebrow">
+          <span class="status" data-s="${esc(law.status || '')}">${esc(law.status || '—')}</span>
+        </div>
+        <h2>${esc(law.title)}</h2>
+        ${law.summary ? `<p class="lede">${esc(law.summary)}</p>` : ''}
+      </div>
+      <button type="button" class="btn ghost" data-action="edit-law" data-id="${esc(law.id)}">تحرير البيانات</button>
+    </div>
+
+    ${meta.length ? `<dl class="meta-grid">
+      ${meta.map(([term, value]) => `<div><dt>${esc(term)}</dt><dd>${esc(value)}</dd></div>`).join('')}
+    </dl>` : ''}
+
+    <div class="eyebrow" style="margin-top:28px">
+      المواد (${articles.length})
+      <button type="button" class="btn sm" data-action="new-article" data-id="${esc(law.id)}"
+        style="margin-inline-start:8px">مادة جديدة</button>
+    </div>
+
+    ${articles.length ? `<div class="card" style="padding:8px 0">
+      ${groups.map(group => `
+        ${group.key ? `<div class="chapter">${esc(group.key)}</div>` : ''}
+        ${group.items.map(article => {
+          const count = Model.notesOfArticle(article.id).length;
+          return `
+          <button type="button" class="art-row" data-action="open-article" data-id="${esc(article.id)}">
+            <span class="art-no">${esc(article.no)}</span>
+            <span class="art-t">${esc(article.title || article.text.slice(0, 70))}</span>
+            <span class="art-n">${count ? count + ' حاشية' : ''}</span>
+          </button>`;
+        }).join('')}`).join('')}
+    </div>`
+    : EmptyState('لا مواد بعد', 'أضف مواد هذا التشريع لتتمكن من التعليق عليها.',
+                 { action: 'new-article-current', label: 'مادة جديدة' })}`;
+  },
+
+  /* ─── صفحة مادة: النص ثم مربع الحاشية ثم الحواشي ─── */
+  article() {
+    const article = Model.article(Router.current.id);
+    if (!article) return Views.laws();
+
+    const law = Model.law(article.lawId);
+    const notes = Model.notesOfArticle(article.id);
+    const { prev, next, index, total } = Model.neighbors(article);
+
+    // لا يُفتح المحرِّر إلا إذا كانت الحاشية تخص هذه المادة فعلاً.
+    const pending = State.editingNoteId ? Model.note(State.editingNoteId) : null;
+    const editing = pending && pending.articleId === article.id ? pending : null;
+
+    return `
+    <button type="button" class="crumb" data-action="open-law" data-id="${esc(article.lawId)}">
+      ← ${esc(law ? law.title : 'التشريع')}
+    </button>
+    <div class="phead">
+      <div>
+        <div class="eyebrow">${esc(article.chapter || (law ? law.title : ''))}</div>
+        <h2>المادة ${esc(article.no)}${article.title ? ' — ' + esc(article.title) : ''}</h2>
+      </div>
+      <button type="button" class="btn ghost" data-action="edit-article" data-id="${esc(article.id)}">تحرير المادة</button>
+    </div>
+
+    <div class="matn">${esc(article.text)}</div>
+
+    <nav class="pager" aria-label="تنقل بين المواد">
+      <button type="button" class="btn ghost sm" data-action="open-article"
+        data-id="${prev ? esc(prev.id) : ''}" ${prev ? '' : 'disabled'}>← المادة السابقة</button>
+      <button type="button" class="btn ghost sm" data-action="open-article"
+        data-id="${next ? esc(next.id) : ''}" ${next ? '' : 'disabled'}>المادة التالية →</button>
+      <span class="pos">${index + 1} من ${total}</span>
+    </nav>
+
+    <div class="eyebrow" style="margin-top:32px">${editing ? 'تحرير حاشية' : 'أضف حاشية'}</div>
+    ${Compose.template(article.id, editing)}
+
+    <div class="eyebrow" style="margin-top:32px">حواشيك على هذه المادة (${notes.length})</div>
+    ${notes.length
+      ? notes.map(n => NoteCard(n)).join('')
+      : EmptyState('لا حواشي على هذه المادة', 'أول حاشية عادةً هي التنبيه العملي الذي تكرر عليك.')}`;
+  },
+};
+
+
+/* ═══════════ النوافذ: تحرير التشريعات والمواد ═══════════ */
+
+const Sheet = {
+  open(html) {
+    $('#sheet').innerHTML = html;
+    $('#modal').hidden = false;
+    const first = $('#sheet input, #sheet textarea, #sheet select');
+    if (first) first.focus();
+  },
+  close() {
+    $('#modal').hidden = true;
+    $('#sheet').innerHTML = '';
+  },
+
+  law(lawId) {
+    const law = lawId ? Model.law(lawId) : null;
+    const field = (id, label, value = '', placeholder = '') =>
+      `<div class="field"><label for="${id}">${label}</label>
+       <input id="${id}" value="${esc(value)}" placeholder="${esc(placeholder)}"></div>`;
+
+    this.open(`
+      <h3>${law ? 'تحرير بيانات التشريع' : 'تشريع جديد'}</h3>
+      ${field('lf-title', 'اسم التشريع', law?.title, 'نظام العمل')}
+      <div class="grid3">
+        <div class="field"><label for="lf-kind">النوع</label>
+          <select id="lf-kind">${LAW_KINDS.map(k =>
+            `<option value="${esc(k)}" ${law?.kind === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select></div>
+        <div class="field"><label for="lf-status">الحالة</label>
+          <select id="lf-status">${LAW_STATUS.map(s =>
+            `<option value="${esc(s)}" ${law?.status === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>
+        ${field('lf-instrument', 'أداة الإصدار', law?.instrument, 'مرسوم ملكي م/٥١')}
+      </div>
+      <div class="grid3">
+        ${field('lf-issued', 'تاريخ الإصدار', law?.issuedAt, '٢٣ / ٨ / ١٤٢٦هـ')}
+        ${field('lf-published', 'تاريخ النشر', law?.publishedAt, '٢٧ / ٩ / ١٤٢٦هـ')}
+        ${field('lf-effective', 'تاريخ السريان', law?.effectiveAt, 'بعد ٩٠ يوماً من النشر')}
+      </div>
+      <div class="grid2">
+        ${field('lf-gazette', 'جهة النشر والعدد', law?.gazette, 'أم القرى — العدد ٤٠٦٨')}
+        ${field('lf-authority', 'الجهة المختصة', law?.authority)}
+      </div>
+      <div class="field"><label for="lf-summary">ملخص</label>
+        <textarea id="lf-summary" rows="2">${esc(law?.summary || '')}</textarea></div>
+      <div class="sheet-foot">
+        <button type="button" class="btn" data-action="save-law" data-id="${esc(lawId || '')}">
+          ${law ? 'احفظ' : 'أضف التشريع'}</button>
+        <button type="button" class="btn ghost" data-action="close-sheet">إلغاء</button>
+        ${law ? `<button type="button" class="del" data-action="delete-law" data-id="${esc(lawId)}">حذف التشريع</button>` : ''}
+      </div>`);
+  },
+
+  article(articleId, lawId) {
+    const article = articleId ? Model.article(articleId) : null;
+    const targetLaw = article ? article.lawId : lawId;
+    const chapters = [...new Set(Store.data.articles
+      .filter(a => a.lawId === targetLaw && a.chapter)
+      .map(a => a.chapter))];
+
+    this.open(`
+      <h3>${article ? 'تحرير مادة' : 'مادة جديدة'}</h3>
+      <div class="field"><label for="af-law">التشريع</label>
+        <select id="af-law">${Store.data.laws.map(l =>
+          `<option value="${esc(l.id)}" ${targetLaw === l.id ? 'selected' : ''}>${esc(l.title)}</option>`).join('')}</select></div>
+      <div class="grid2">
+        <div class="field"><label for="af-no">رقم المادة</label>
+          <input id="af-no" value="${esc(article?.no || '')}" placeholder="٨٠"></div>
+        <div class="field"><label for="af-title">عنوان المادة (اختياري)</label>
+          <input id="af-title" value="${esc(article?.title || '')}"></div>
+      </div>
+      <div class="field"><label for="af-chapter">الباب أو الفصل (اختياري)</label>
+        <input id="af-chapter" value="${esc(article?.chapter || '')}" list="chapter-list"
+          placeholder="الباب السادس — انتهاء عقد العمل">
+        <datalist id="chapter-list">${chapters.map(c => `<option value="${esc(c)}"></option>`).join('')}</datalist></div>
+      <div class="field"><label for="af-text">نص المادة</label>
+        <textarea id="af-text" rows="7">${esc(article?.text || '')}</textarea></div>
+      <div class="sheet-foot">
+        <button type="button" class="btn" data-action="save-article" data-id="${esc(articleId || '')}">
+          ${article ? 'احفظ' : 'أضف المادة'}</button>
+        <button type="button" class="btn ghost" data-action="close-sheet">إلغاء</button>
+        ${article ? `<button type="button" class="del" data-action="delete-article" data-id="${esc(articleId)}">حذف المادة</button>` : ''}
+      </div>`);
+  },
+};
+
+
+/* ═══════════ الإجراءات ═══════════ */
+
+const Actions = {
+  'open-laws':    () => Router.go('laws'),
+  'open-law':     el => Router.go('law', el.dataset.id),
+  'open-article': el => { if (el.dataset.id) { State.editingNoteId = null; Router.go('article', el.dataset.id); } },
+  'new-law':      () => Sheet.law(null),
+  'edit-law':     el => Sheet.law(el.dataset.id),
+  'new-article':  el => Sheet.article(null, el.dataset.id),
+  'edit-article': el => Sheet.article(el.dataset.id),
+  'close-sheet':  () => Sheet.close(),
+  'cancel-edit':  () => { State.editingNoteId = null; render(); },
+
+  'new-article-current': () => Sheet.article(null, Router.current.id),
+
+  'filter-type': el => {
+    State.noteTypeFilter = el.dataset.type;
+    if (Router.current.view === 'notes') render(); else Router.go('notes');
+  },
+
+  'filter-topic': el => {
+    const topic = el.dataset.topic;
+    State.topicFilter = State.topicFilter === topic ? null : topic;
+    if (Router.current.view === 'notes') render(); else Router.go('notes');
+  },
+
+  'edit-note': el => {
+    const note = Model.note(el.dataset.id);
+    if (!note) return;
+    State.editingNoteId = note.id;
+    if (Router.current.view === 'article' && Router.current.id === note.articleId) render();
+    else Router.go('article', note.articleId);
+    setTimeout(() => $('#note-input')?.focus(), 0);
+  },
+
+  'save-note': el => {
+    const composer = el.closest('[data-composer]');
+    if (composer) Compose.save(composer);
+  },
+
+  'save-law': el => {
+    const title = $('#lf-title').value.trim();
+    if (!title) { toast('اسم التشريع مطلوب'); return; }
+    const payload = {
+      title,
+      kind:        $('#lf-kind').value,
+      status:      $('#lf-status').value,
+      instrument:  $('#lf-instrument').value.trim(),
+      issuedAt:    $('#lf-issued').value.trim(),
+      publishedAt: $('#lf-published').value.trim(),
+      effectiveAt: $('#lf-effective').value.trim(),
+      gazette:     $('#lf-gazette').value.trim(),
+      authority:   $('#lf-authority').value.trim(),
+      summary:     $('#lf-summary').value.trim(),
+    };
+    if (el.dataset.id) {
+      const existing = Model.law(el.dataset.id);
+      if (!existing) { toast('لم يُعثر على التشريع'); return; }
+      Object.assign(existing, payload);
+      toast('حُفظت البيانات');
+    } else {
+      const law = { id: uid('law'), ...payload };
+      Store.data.laws.push(law);
+      Store.commit();
+      Sheet.close();
+      Router.go('law', law.id);
+      toast('أُضيف التشريع');
+      return;
+    }
+    Store.commit();
+    Sheet.close();
+    render();
+  },
+
+  'delete-law': el => {
+    const law = Model.law(el.dataset.id);
+    if (!law) return;
+    const articleIds = new Set(Model.articlesOfLaw(law.id).map(a => a.id));
+    const noteCount = Store.data.notes.filter(n => articleIds.has(n.articleId)).length;
+    const message = `حذف «${law.title}» سيحذف ${articleIds.size} مادة و${noteCount} حاشية. لا يمكن التراجع.`;
+    if (!confirm(message)) return;
+    Store.data.notes    = Store.data.notes.filter(n => !articleIds.has(n.articleId));
+    Store.data.articles = Store.data.articles.filter(a => a.lawId !== law.id);
+    Store.data.laws     = Store.data.laws.filter(l => l.id !== law.id);
+    Store.commit();
+    Sheet.close();
+    Router.go('laws');
+    toast('حُذف التشريع');
+  },
+
+  'save-article': el => {
+    const no   = $('#af-no').value.trim();
+    const text = $('#af-text').value.trim();
+    if (!no)   { toast('رقم المادة مطلوب'); return; }
+    if (!text) { toast('نص المادة مطلوب'); return; }
+    const payload = {
+      lawId:   $('#af-law').value,
+      no,
+      title:   $('#af-title').value.trim(),
+      chapter: $('#af-chapter').value.trim(),
+      text,
+    };
+    if (el.dataset.id) {
+      const existing = Model.article(el.dataset.id);
+      if (!existing) { toast('لم يُعثر على المادة'); return; }
+      Object.assign(existing, payload);
+      Store.commit();
+      Sheet.close();
+      render();
+      toast('حُفظت المادة');
+    } else {
+      const article = { id: uid('art'), ...payload };
+      Store.data.articles.push(article);
+      Store.commit();
+      Sheet.close();
+      Router.go('article', article.id);
+      toast('أُضيفت المادة');
+    }
+  },
+
+  'delete-article': el => {
+    const article = Model.article(el.dataset.id);
+    if (!article) return;
+    const noteCount = Model.notesOfArticle(article.id).length;
+    if (!confirm(`حذف المادة ${article.no} سيحذف ${noteCount} حاشية. لا يمكن التراجع.`)) return;
+    const lawId = article.lawId;
+    Store.data.notes    = Store.data.notes.filter(n => n.articleId !== article.id);
+    Store.data.articles = Store.data.articles.filter(a => a.id !== article.id);
+    Store.commit();
+    Sheet.close();
+    Router.go('law', lawId);
+    toast('حُذفت المادة');
+  },
+
+  'delete-note': el => {
+    if (!confirm('حذف هذه الحاشية؟ لا يمكن التراجع.')) return;
+    Store.data.notes = Store.data.notes.filter(n => n.id !== el.dataset.id);
+    State.editingNoteId = null;
+    Store.commit();
+    render();
+    toast('حُذفت الحاشية');
+  },
+
+  export: () => {
+    Store.flush();
+    const blob = new Blob([JSON.stringify(Store.data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `hashiya-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  },
+
+  import: () => $('#file-input').click(),
+};
+
+
+/* ═══════════ ربط الأحداث ═══════════ */
+
+function bindEvents() {
+  // منع فقدان التركيز عند النقر على اقتراح — يبقى المؤشر في مربع الكتابة.
+  document.addEventListener('mousedown', event => {
+    if (event.target.closest('#topic-ac')) event.preventDefault();
+  });
+
+  // نقر مفوَّض على كامل الصفحة.
+  document.addEventListener('click', event => {
+    if (event.target === $('#modal')) { Sheet.close(); return; }
+
+    // اختيار عنصر من قائمة المواضيع.
+    const option = event.target.closest('#topic-ac li');
+    if (option) {
+      const textarea = $('#note-input');
+      if (textarea) Compose.acceptAt(textarea, Number(option.dataset.i));
+      return;
+    }
+
+    const trigger = event.target.closest('[data-action]');
+    if (!trigger || trigger.disabled) return;
+    const handler = Actions[trigger.dataset.action];
+    if (handler) { event.preventDefault(); handler(trigger); }
+  });
+
+  // الكتابة في مربع الحاشية أو حقل البحث.
+  document.addEventListener('input', event => {
+    if (event.target.id === 'note-input') {
+      Compose.openAutocomplete(event.target);
+      return;
+    }
+    if (event.target.id === 'notes-search') {
+      State.query = event.target.value;
+      const caret = event.target.selectionStart;
+      render();
+      const field = $('#notes-search');
+      if (field) { field.focus(); field.setSelectionRange(caret, caret); }
+    }
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.target.id === 'note-input') { Compose.onKeyDown(event, event.target); return; }
+    if (event.key === 'Escape' && !$('#modal').hidden) Sheet.close();
+  });
+
+  // إغلاق قائمة الاقتراحات عند مغادرة مربع الكتابة.
+  document.addEventListener('focusout', event => {
+    if (event.target.id === 'note-input') {
+      setTimeout(() => {
+        if (document.activeElement?.closest('#topic-ac')) return;
+        Compose.closeAutocomplete();
+      }, 120);
+    }
+  });
+
+  // استيراد نسخة احتياطية.
+  $('#file-input').addEventListener('change', event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        Store.replaceAll(JSON.parse(String(reader.result)));
+        State.topicFilter = null;
+        State.query = '';
+        Router.go('home');
+        render();
+        toast('استُورد الملف');
+      } catch (err) {
+        toast('الملف غير صالح');
+        console.error('حاشية: فشل الاستيراد.', err);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  });
+}
+
+
+/* ═══════════ الإقلاع ═══════════ */
+
+function render() {
+  const view = Views[Router.current.view] || Views.home;
+  $('#view').innerHTML = view();
+  renderNav();
+}
+
+function init() {
+  bindEvents();
+  Router.start();
+  render();
+  Store.setSaverState('done', 'آخر حفظ محلي');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+return { Store, Model, Router, State };
+})();
+</script>
+</body>
+</html>
