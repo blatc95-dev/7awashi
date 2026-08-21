@@ -165,6 +165,24 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .topics{display:flex;flex-wrap:wrap;gap:var(--s1);margin-top:var(--s3)}
 .tag-inline{font-weight:500;border-bottom:1px dashed var(--border-strong);cursor:pointer}
 .tag-inline:hover{background:var(--elevated)}
+.topics .spacer{flex:1}
+.topic.danger{color:var(--danger);border-color:rgba(122,31,31,.3)}
+.topic.danger:hover{background:var(--danger);color:var(--surface);border-color:var(--danger)}
+.btn.ghost.danger{color:var(--danger);border-color:var(--danger)}
+.phead-acts{display:flex;gap:var(--s2);flex-wrap:wrap}
+.datepick{display:flex;gap:var(--s1);align-items:center;flex-wrap:wrap}
+.datepick select,.datepick input{width:auto;flex:none;padding:6px var(--s2);font-size:12px}
+.field select.narrow{width:auto;min-width:200px}
+.datepick select[aria-label="الشهر"]{min-width:104px}
+.datepick input[type="number"]{width:76px}
+.datepick-echo{font-size:10.5px;color:var(--muted);margin-top:5px}
+.mention{
+  font-weight:500;font-size:.94em;padding:0 4px;border-radius:var(--r);
+  background:var(--elevated);border:1px solid var(--border-subtle);cursor:pointer;
+}
+.mention:hover{border-color:var(--border-strong)}
+.src{font-style:italic}
+.src-new{width:auto;max-width:180px;padding:5px var(--s2);font-size:11.5px}
 
 /* ─── مرشِّحات ─── */
 .chips{display:flex;flex-wrap:wrap;gap:var(--s1);align-items:center;margin-bottom:var(--s4)}
@@ -199,7 +217,11 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 }
 .ac li:first-child{border-top:none}
 .ac li[aria-selected="true"]{background:var(--ink);color:var(--surface)}
-.ac li .n{margin-inline-start:auto;font-size:10px;opacity:.6}
+.ac li .n{
+  margin-inline-start:auto;font-size:10px;opacity:.6;
+  max-width:64%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.ac li > span:first-child{flex:none}
 .ac .new{color:var(--muted);font-style:normal}
 .ac li[aria-selected="true"] .new{color:var(--surface);opacity:.75}
 
@@ -387,8 +409,15 @@ const SAVE_DEBOUNCE_MS = 400;
 /** مفتاح التخزين. الرقم يتغير عند أي تغيير غير متوافق في البنية. */
 const STORAGE_KEY = 'hashiya.store.v4';
 
-/** يطابق موضوعاً داخل نص الحاشية: # يليه حروف أو أرقام أو شرطة سفلية. */
-const TOPIC_PATTERN = /#([\p{L}\p{N}_]+)/gu;
+/** يطابق موضوعاً داخل نص الحاشية: # يليه حروف أو أرقام أو شرطة. */
+const TOPIC_PATTERN = /#([\p{L}\p{N}_-]+)/gu;
+
+/** يطابق إشارة إلى مادة: @ يليه رقمها. تُحلّ داخل تشريع الحاشية نفسه. */
+const MENTION_PATTERN = /@([٠-٩0-9]+)/gu;
+
+/** مرور واحد على نص الحاشية يمسك المواضيع والإشارات معاً. */
+const BODY_PATTERN = new RegExp(
+  TOPIC_PATTERN.source + '|' + MENTION_PATTERN.source, 'gu');
 
 
 /* ═══════════ أدوات عامة ═══════════ */
@@ -409,8 +438,15 @@ function uid(prefix) {
 }
 
 /** الموضوع يُخزَّن بشرطة سفلية بدل المسافة ليكون رمزاً واحداً لا يلتبس بالنص. */
-const normalizeTopic = raw => String(raw).trim().replace(/\s+/g, '_');
-const displayTopic   = topic => String(topic).replace(/_/g, ' ');
+const normalizeTopic = raw => canonicalTopic(String(raw).trim().replace(/\s+/g, '_'));
+
+/**
+ * الشرطة والشرطة السفلية سواء، فلا يتفرّق الموضوع الواحد على صيغتين
+ * حين يكتبه المستخدم مرةً «عقد-العمل» ومرةً «عقد_العمل».
+ */
+const canonicalTopic = raw => String(raw).replace(/-+/g, '_').replace(/^_+|_+$/g, '');
+
+const displayTopic = topic => String(topic).replace(/_/g, ' ');
 
 /** تاريخ نسبي مختصر. */
 function timeAgo(timestamp) {
@@ -437,6 +473,128 @@ function toast(message) {
   el.hidden = false;
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => { el.hidden = true; }, 2600);
+}
+
+
+/* ═══════════ التواريخ الهجرية ═══════════ */
+/* تواريخ الأنظمة السعودية هجرية، و<input type="date"> ميلادي لا غير؛ فالأداة
+   هنا ثلاث قوائم (يوم · شهر · سنة) بتقويم أم القرى. التحويل إلى الميلادي
+   يأتي من تقويم المتصفح نفسه، فلا جدول ثابت يَبلى مع السنين.
+   القيمة تُخزَّن «١٤٤٣-٦-٤»، وما كُتب يدوياً قبل الأداة يُعرض كما هو. */
+
+const HIJRI_MONTHS = Object.freeze([
+  'محرم', 'صفر', 'ربيع الأول', 'ربيع الآخر', 'جمادى الأولى', 'جمادى الآخرة',
+  'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة',
+]);
+
+const HIJRI_MIN_YEAR = 1300;
+const HIJRI_MAX_YEAR = 1500;
+const DAY_MS = 86400000;
+
+/** صيغة القيمة المخزَّنة: سنة-شهر-يوم هجري. */
+const HIJRI_VALUE = /^(\d{3,4})-(\d{1,2})-(\d{1,2})$/;
+
+/** صيغة المدة: «+١٨٠d» يوماً أو «+٦m» شهراً من تاريخ النشر. */
+const TERM_VALUE = /^\+(\d{1,4})([dm])$/;
+
+const arabicNumber = n => String(n).replace(/\d/g, d => ARABIC_DIGITS[Number(d)]);
+
+const hijriFormatter = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
+  year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC',
+});
+
+const gregorianFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-gregory', {
+  year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
+});
+
+/** أجزاء التاريخ الهجري لِلحظة ميلادية. */
+function hijriPartsOf(ms) {
+  const found = {};
+  for (const part of hijriFormatter.formatToParts(new Date(ms))) {
+    if (part.type !== 'literal') found[part.type] = part.value;
+  }
+  return { y: parseInt(found.year, 10), m: Number(found.month), d: Number(found.day) };
+}
+
+const hijriKey = parts => parts.y * 10000 + parts.m * 100 + parts.d;
+
+/**
+ * اللحظة الميلادية التي يبدأ فيها يومٌ هجري معيّن.
+ * بحث ثنائي على خط الزمن: التقويم متزايد، فيكفي نصفُ المدى في كل خطوة.
+ * يعيد null إن كان التاريخ غير موجود (كـ ٣٠ من شهرٍ تسعةٍ وعشرين يوماً).
+ */
+function gregorianOfHijri(y, m, d) {
+  const target = y * 10000 + m * 100 + d;
+  let lo = Date.UTC(1800, 0, 1);
+  let hi = Date.UTC(2200, 0, 1);
+
+  while (hi - lo > DAY_MS) {
+    const mid = lo + Math.floor((hi - lo) / (2 * DAY_MS)) * DAY_MS;
+    if (mid <= lo) break;
+    if (hijriKey(hijriPartsOf(mid)) < target) lo = mid; else hi = mid;
+  }
+  return hijriKey(hijriPartsOf(hi)) === target ? hi : null;
+}
+
+/** عدد أيام شهر هجري — يتراوح بين ٢٩ و٣٠ في تقويم أم القرى. */
+function hijriMonthLength(y, m) {
+  const start = gregorianOfHijri(y, m, 1);
+  const next = gregorianOfHijri(m === 12 ? y + 1 : y, m === 12 ? 1 : m + 1, 1);
+  if (start === null || next === null) return 30;
+  return Math.round((next - start) / DAY_MS);
+}
+
+function parseHijri(value) {
+  const found = HIJRI_VALUE.exec(String(value ?? '').trim());
+  if (!found) return null;
+  const parts = { y: Number(found[1]), m: Number(found[2]), d: Number(found[3]) };
+  const valid = parts.y >= HIJRI_MIN_YEAR && parts.y <= HIJRI_MAX_YEAR
+    && parts.m >= 1 && parts.m <= 12
+    && parts.d >= 1 && parts.d <= hijriMonthLength(parts.y, parts.m);
+  return valid ? parts : null;
+}
+
+const hijriLabel = parts =>
+  `${arabicNumber(parts.d)} ${HIJRI_MONTHS[parts.m - 1]} ${arabicNumber(parts.y)}هـ`;
+
+/** التاريخ الهجري مع مقابله الميلادي. غير المفهوم يُعاد كما هو. */
+function formatHijri(value) {
+  const parts = parseHijri(value);
+  if (!parts) return String(value ?? '').trim();
+
+  const ms = gregorianOfHijri(parts.y, parts.m, parts.d);
+  if (ms === null) return hijriLabel(parts);
+  return `${hijriLabel(parts)} — الموافق ${gregorianFormatter.format(new Date(ms))}م`;
+}
+
+/** يضيف مدةً إلى تاريخ هجري ويعيد أجزاء الناتج. */
+function addTerm(parts, amount, unit) {
+  if (unit === 'm') {
+    const months = (parts.y * 12 + parts.m - 1) + amount;
+    const y = Math.floor(months / 12);
+    const m = (months % 12) + 1;
+    return { y, m, d: Math.min(parts.d, hijriMonthLength(y, m)) };
+  }
+  const start = gregorianOfHijri(parts.y, parts.m, parts.d);
+  return start === null ? null : hijriPartsOf(start + amount * DAY_MS);
+}
+
+/**
+ * تاريخ السريان: إما تاريخ محدد، وإما مدة من تاريخ النشر — وكثير من
+ * الأنظمة تنص على المدة لا على التاريخ، فتُحسب هنا من تاريخ النشر إن عُرف.
+ */
+function formatEffective(law) {
+  const term = TERM_VALUE.exec(String(law.effectiveAt ?? '').trim());
+  if (!term) return formatHijri(law.effectiveAt);
+
+  const amount = Number(term[1]);
+  const unit = term[2] === 'm' ? (amount === 1 ? 'شهر' : 'شهراً') : (amount === 1 ? 'يوم' : 'يوماً');
+  const label = `بعد (${arabicNumber(amount)}) ${unit} من تاريخ النشر`;
+
+  const published = parseHijri(law.publishedAt);
+  if (!published) return label;
+  const reached = addTerm(published, amount, term[2]);
+  return reached ? `${label} — أي ${hijriLabel(reached)}` : label;
 }
 
 
@@ -521,9 +679,15 @@ const Store = (() => {
       const lawId = bundle.law.id;
       if (dropped.has(lawId)) continue;
 
-      if (!data.laws.some(l => l.id === lawId)) {
+      const existing = data.laws.find(l => l.id === lawId);
+      if (!existing) {
         data.laws.push({ ...bundle.law, bundled: true });
         added++;
+      } else {
+        // قيمة مرفقة قديمة حلّ محلها شكل أدق — تُصحَّح ما لم يكن المستخدم غيّرها.
+        for (const [field, stale] of Object.entries(bundle.superseded || {})) {
+          if (stale.includes(existing[field])) { existing[field] = bundle.law[field]; added++; }
+        }
       }
       const present = new Set(data.articles.filter(a => a.lawId === lawId).map(a => a.id));
       for (const [id, no, part, chapter, branch, text] of bundle.articles) {
@@ -590,7 +754,33 @@ const Model = {
   /** المواضيع تُشتق من نص الحاشية — لا تُخزَّن، فلا تتعارض مع النص. */
   topicsOf(note) {
     const found = String(note.body).matchAll(TOPIC_PATTERN);
-    return [...new Set([...found].map(m => m[1]))];
+    return [...new Set([...found].map(m => canonicalTopic(m[1])).filter(Boolean))];
+  },
+
+  /** مادة برقمها داخل تشريع معيّن — تُستعمل لحلّ الإشارات بعلامة @. */
+  articleByNo(lawId, no) {
+    const key = articleSortKey(no);
+    if (key === Number.MAX_SAFE_INTEGER) return null;
+    return Store.data.articles
+      .find(a => a.lawId === lawId && articleSortKey(a.no) === key) || null;
+  },
+
+  /** التشريع الذي تنتمي إليه الحاشية، عبر مادتها. */
+  lawOfNote(note) {
+    const article = this.article(note.articleId);
+    return article ? this.law(article.lawId) : null;
+  },
+
+  /** المصادر المستعملة في الحواشي مع عدد مرّاتها — تُشتق ولا تُخزَّن في قائمة. */
+  allSources() {
+    const counts = new Map();
+    for (const note of Store.data.notes) {
+      const source = String(note.source || '').trim();
+      if (source) counts.set(source, (counts.get(source) || 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count || a.source.localeCompare(b.source, 'ar'));
   },
 
   /** كل المواضيع مع عدد استعمالاتها، مرتَّبة تنازلياً. */
@@ -673,11 +863,22 @@ function renderNav() {
 
 /* ═══════════ مكوّنات مشتركة ═══════════ */
 
-/** يحوّل نص الحاشية إلى HTML آمن مع إبراز المواضيع. */
-function renderNoteBody(body) {
-  return esc(body).replace(TOPIC_PATTERN, (_, topic) =>
-    `<button type="button" class="tag-inline" data-action="filter-topic" data-topic="${esc(topic)}">#${esc(displayTopic(topic))}</button>`
-  );
+/**
+ * يحوّل نص الحاشية إلى HTML آمن: المواضيع تُصبح مرشِّحات، والإشارات بعلامة @
+ * تُصبح روابط إلى موادها. الإشارة التي لا تُحلّ تبقى نصاً كما كتبها المستخدم.
+ */
+function renderNoteBody(note) {
+  const law = Model.lawOfNote(note);
+  return esc(note.body).replace(BODY_PATTERN, (match, topic, articleNo) => {
+    if (topic !== undefined) {
+      const canonical = canonicalTopic(topic);
+      if (!canonical) return match;
+      return `<button type="button" class="tag-inline" data-action="filter-topic" data-topic="${esc(canonical)}">#${esc(displayTopic(canonical))}</button>`;
+    }
+    const target = law ? Model.articleByNo(law.id, articleNo) : null;
+    if (!target) return match;
+    return `<button type="button" class="mention" data-action="open-article" data-id="${esc(target.id)}">المادة ${esc(target.no)}</button>`;
+  });
 }
 
 /**
@@ -702,10 +903,12 @@ function NoteCard(note, options = {}) {
         <span class="dot" aria-hidden="true"></span>` : ''}
       <span>${timeAgo(note.createdAt)}</span>
       ${note.updatedAt > note.createdAt ? '<span class="dot" aria-hidden="true"></span><span>مُعدَّلة</span>' : ''}
+      ${note.source ? `<span class="dot" aria-hidden="true"></span>
+        <span class="src">${esc(note.source)}</span>` : ''}
       <span class="spacer"></span>
       <button type="button" class="btn ghost sm" data-action="edit-note" data-id="${esc(note.id)}">تحرير</button>
     </div>
-    <div class="note-body">${renderNoteBody(note.body)}</div>
+    <div class="note-body">${renderNoteBody(note)}</div>
     ${topics.length ? `<div class="topics">${topics.map(t =>
       `<button type="button" class="topic" data-action="filter-topic" data-topic="${esc(t)}">${esc(displayTopic(t))}</button>`
     ).join('')}</div>` : ''}
@@ -722,14 +925,37 @@ function EmptyState(title, message, action) {
 
 
 /* ═══════════ المحرِّر: مربع إضافة الحاشية ═══════════ */
-/* مربع بسيط: نص + قائمة نوع + زر حفظ. الموضوع يُكتب داخل النص بعلامة #
-   وتظهر قائمة منسدلة بالمواضيع الموجودة لمنع تكرار العناوين. */
+/* مربع بسيط: نص + نوع + مصدر + زر حفظ. الموضوع يُكتب داخل النص بعلامة #،
+   والإشارة إلى مادة أخرى بعلامة @، ولكلٍّ منهما قائمة اقتراحات تمنع التكرار
+   والخطأ في الرقم. */
 
 const Compose = (() => {
   let acItems = [];      // عناصر القائمة المعروضة حالياً
   let acIndex = 0;       // العنصر المحدَّد
-  let acStart = -1;      // موضع # في النص
+  let acStart = -1;      // موضع # أو @ في النص
+  let acKind  = 'topic'; // نوع الاقتراح: موضوع أو إشارة إلى مادة
   let acOpen  = false;
+
+  /**
+   * المصدر يُختار من قائمة ما استُعمل قبلاً، أو يُكتب جديداً عبر خيار «إضافة».
+   * القائمة مشتقة من الحواشي نفسها، فلا يوجد سجل مصادر منفصل يتعارض معها.
+   */
+  function sourceControl(note) {
+    const sources = Model.allSources().map(s => s.source);
+    const current = String(note?.source || '').trim();
+    const known = current && !sources.includes(current) ? [current, ...sources] : sources;
+
+    return `
+      <label class="sr" for="note-source">مصدر الحاشية</label>
+      <select id="note-source">
+        <option value="">بلا مصدر</option>
+        ${known.map(s =>
+          `<option value="${esc(s)}" ${current === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
+        <option value="" data-new="yes">+ إضافة مصدر…</option>
+      </select>
+      <input id="note-source-new" class="src-new" placeholder="اسم المصدر" hidden
+        aria-label="مصدر جديد">`;
+  }
 
   function template(articleId, note) {
     const isEdit = !!note;
@@ -738,7 +964,7 @@ const Compose = (() => {
       <div class="composer-wrap">
         <label class="sr" for="note-input">نص الحاشية</label>
         <textarea id="note-input" rows="3"
-          placeholder="اكتب حاشيتك على هذه المادة… استخدم # لإضافة موضوع"
+          placeholder="اكتب حاشيتك على هذه المادة… # لموضوع، @ للإشارة إلى مادة"
           aria-autocomplete="list" aria-controls="topic-ac">${esc(note ? note.body : '')}</textarea>
         <ul class="ac" id="topic-ac" role="listbox" hidden></ul>
       </div>
@@ -748,6 +974,7 @@ const Compose = (() => {
           ${Object.entries(NOTE_TYPES).map(([value, label]) =>
             `<option value="${value}" ${note && note.type === value ? 'selected' : ''}>${label}</option>`).join('')}
         </select>
+        ${sourceControl(note)}
         <button type="button" class="btn" data-action="save-note">${isEdit ? 'احفظ التعديل' : 'أضف الحاشية'}</button>
         ${isEdit ? `
           <button type="button" class="btn ghost" data-action="cancel-edit">إلغاء</button>
@@ -758,21 +985,23 @@ const Compose = (() => {
     </div>`;
   }
 
-  /** يقرأ الكلمة التي تلي # عند مؤشر الكتابة، إن وُجدت. */
+  /** يقرأ المقطع الذي يلي # أو @ عند مؤشر الكتابة، إن وُجد. */
   function activeToken(textarea) {
     const caret = textarea.selectionStart;
     const before = textarea.value.slice(0, caret);
     const hash = before.lastIndexOf('#');
-    if (hash === -1) return null;
+    const at   = before.lastIndexOf('@');
+    const start = Math.max(hash, at);
+    if (start === -1) return null;
 
-    const query = before.slice(hash + 1);
+    const query = before.slice(start + 1);
     // يُلغى الاقتراح إذا احتوى المقطع على مسافة أو سطر جديد.
     if (/[\s\n]/.test(query)) return null;
-    // يجب أن تسبق # مسافة أو بداية النص، لا حرف.
-    const charBefore = hash > 0 ? before[hash - 1] : ' ';
+    // يجب أن تسبق العلامة مسافة أو بداية النص، لا حرف.
+    const charBefore = start > 0 ? before[start - 1] : ' ';
     if (!/[\s\n(«"]/.test(charBefore)) return null;
 
-    return { start: hash, query };
+    return { kind: start === at ? 'mention' : 'topic', start, query };
   }
 
   function closeAutocomplete() {
@@ -780,6 +1009,7 @@ const Compose = (() => {
     acItems = [];
     acIndex = 0;
     acStart = -1;
+    acKind = 'topic';
     const list = $('#topic-ac');
     if (list) { list.hidden = true; list.innerHTML = ''; }
   }
@@ -788,22 +1018,53 @@ const Compose = (() => {
     const token = activeToken(textarea);
     if (!token) { closeAutocomplete(); return; }
 
-    const query = token.query.toLowerCase();
-    const existing = Model.allTopics()
-      .filter(t => !query || t.topic.toLowerCase().includes(query))
-      .slice(0, 8);
+    const items = token.kind === 'mention'
+      ? mentionItems(textarea, token.query)
+      : topicItems(token.query);
+    if (!items.length) { closeAutocomplete(); return; }
 
-    const normalized = normalizeTopic(token.query);
-    const isNew = normalized && !existing.some(t => t.topic === normalized);
-
-    acItems = existing.map(t => ({ topic: t.topic, count: t.count, isNew: false }));
-    if (isNew) acItems.push({ topic: normalized, count: 0, isNew: true });
-    if (!acItems.length) { closeAutocomplete(); return; }
-
+    acItems = items;
+    acKind = token.kind;
     acStart = token.start;
     acIndex = 0;
     acOpen = true;
     paint();
+  }
+
+  function topicItems(rawQuery) {
+    const query = rawQuery.toLowerCase();
+    const existing = Model.allTopics()
+      .filter(t => !query || t.topic.toLowerCase().includes(query))
+      .slice(0, 8);
+
+    const normalized = normalizeTopic(rawQuery);
+    const isNew = normalized && !existing.some(t => t.topic === normalized);
+
+    const items = existing.map(t => ({ topic: t.topic, count: t.count, isNew: false }));
+    if (isNew) items.push({ topic: normalized, count: 0, isNew: true });
+    return items;
+  }
+
+  /** مواد التشريع نفسه، مرشَّحة برقم المادة أو بكلمة من نصها. */
+  function mentionItems(textarea, rawQuery) {
+    const composer = textarea.closest('[data-composer]');
+    const here = composer ? Model.article(composer.dataset.article) : null;
+    if (!here) return [];
+
+    const query = rawQuery.trim();
+    // الرقم يُطابق أرقام المواد وحدها، وإلا طابَق أرقام البنود داخل النصوص.
+    const isNumber = /^[٠-٩0-9]+$/.test(query);
+    const prefix = isNumber ? String(articleSortKey(query)) : '';
+
+    return Model.articlesOfLaw(here.lawId)
+      .filter(a => a.id !== here.id)
+      .filter(a => {
+        if (!query) return true;
+        if (isNumber) return String(articleSortKey(a.no)).startsWith(prefix);
+        return a.text.includes(query) || String(a.title || '').includes(query);
+      })
+      .slice(0, 8)
+      .map(a => ({ no: a.no, hint: (a.title || a.text).slice(0, 52) }));
   }
 
   function paint() {
@@ -811,22 +1072,23 @@ const Compose = (() => {
     if (!list) return;
     list.innerHTML = acItems.map((item, i) => `
       <li role="option" data-i="${i}" aria-selected="${i === acIndex}">
-        <span>#${esc(displayTopic(item.topic))}</span>
-        ${item.isNew
-          ? '<span class="new n">موضوع جديد</span>'
-          : `<span class="n">${item.count}</span>`}
+        ${acKind === 'mention'
+          ? `<span>المادة ${esc(item.no)}</span><span class="n">${esc(item.hint)}</span>`
+          : `<span>#${esc(displayTopic(item.topic))}</span>${item.isNew
+              ? '<span class="new n">موضوع جديد</span>'
+              : `<span class="n">${item.count}</span>`}`}
       </li>`).join('');
     list.hidden = false;
     const active = list.querySelector('[aria-selected="true"]');
     if (active) active.scrollIntoView({ block: 'nearest' });
   }
 
-  /** يستبدل المقطع الجاري كتابته بالموضوع المختار. */
+  /** يستبدل المقطع الجاري كتابته بالموضوع أو الإشارة المختارة. */
   function accept(textarea, index) {
     const item = acItems[index];
     if (!item || acStart < 0) return;
     const caret = textarea.selectionStart;
-    const inserted = '#' + item.topic + ' ';
+    const inserted = acKind === 'mention' ? '@' + item.no + ' ' : '#' + item.topic + ' ';
     textarea.value = textarea.value.slice(0, acStart) + inserted + textarea.value.slice(caret);
     const pos = acStart + inserted.length;
     textarea.setSelectionRange(pos, pos);
@@ -864,6 +1126,25 @@ const Compose = (() => {
     }
   }
 
+  /** خيار «إضافة مصدر» يُعرَف بسمته، فلا نحتاج قيمةً سحرية قد تكون اسم مصدر. */
+  const wantsNewSource = select => select.selectedOptions[0]?.dataset.new === 'yes';
+
+  /** القيمة المختارة من القائمة، أو ما كُتب في حقل المصدر الجديد. */
+  function readSource(composer) {
+    const select = composer.querySelector('#note-source');
+    if (!select) return '';
+    if (!wantsNewSource(select)) return select.value.trim();
+    return composer.querySelector('#note-source-new').value.trim();
+  }
+
+  /** إظهار حقل الكتابة عند اختيار «إضافة مصدر». */
+  function onSourceChange(select) {
+    const field = select.closest('[data-composer]')?.querySelector('#note-source-new');
+    if (!field) return;
+    field.hidden = !wantsNewSource(select);
+    if (!field.hidden) field.focus();
+  }
+
   function save(composer) {
     const textarea = composer.querySelector('textarea');
     const body = textarea.value.trim();
@@ -873,6 +1154,7 @@ const Compose = (() => {
       return;
     }
     const type = composer.querySelector('#note-type').value;
+    const source = readSource(composer);
     const editingId = composer.dataset.note;
 
     if (editingId) {
@@ -880,6 +1162,7 @@ const Compose = (() => {
       if (!note) { toast('لم تُعثر الحاشية'); return; }
       note.body = body;
       note.type = type;
+      note.source = source;
       note.updatedAt = Date.now();
       State.editingNoteId = null;
       toast('حُفظ التعديل');
@@ -888,6 +1171,7 @@ const Compose = (() => {
         id: uid('note'),
         articleId: composer.dataset.article,
         type,
+        source,
         body,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -899,7 +1183,7 @@ const Compose = (() => {
     render();
   }
 
-  return { template, openAutocomplete, closeAutocomplete, onKeyDown, accept, save,
+  return { template, openAutocomplete, closeAutocomplete, onKeyDown, accept, save, onSourceChange,
            get isOpen() { return acOpen; },
            acceptAt(textarea, i) { accept(textarea, i); } };
 })();
@@ -1061,6 +1345,9 @@ const Views = {
         <div class="topics">
           <span class="topic" style="cursor:default">${articleCount} مادة</span>
           <span class="topic" style="cursor:default">${noteCount} حاشية</span>
+          <span class="spacer"></span>
+          <button type="button" class="topic" data-action="edit-law" data-id="${esc(law.id)}">تحرير البيانات</button>
+          <button type="button" class="topic danger" data-action="delete-law" data-id="${esc(law.id)}">حذف</button>
         </div>
       </div>`;
     }).join('')
@@ -1110,10 +1397,10 @@ const Views = {
     const meta = [
       ['النوع', law.kind],
       ['أداة الإصدار', law.instrument],
-      ['تاريخ الإصدار', law.issuedAt],
+      ['تاريخ الإصدار', formatHijri(law.issuedAt)],
       ['النشر', law.gazette],
-      ['تاريخ النشر', law.publishedAt],
-      ['تاريخ السريان', law.effectiveAt],
+      ['تاريخ النشر', formatHijri(law.publishedAt)],
+      ['تاريخ السريان', formatEffective(law)],
       ['الجهة المختصة', law.authority],
     ].filter(([, value]) => value);
 
@@ -1127,7 +1414,10 @@ const Views = {
         <h2>${esc(law.title)}</h2>
         ${law.summary ? `<p class="lede">${esc(law.summary)}</p>` : ''}
       </div>
-      <button type="button" class="btn ghost" data-action="edit-law" data-id="${esc(law.id)}">تحرير البيانات</button>
+      <div class="phead-acts">
+        <button type="button" class="btn ghost" data-action="edit-law" data-id="${esc(law.id)}">تحرير البيانات</button>
+        <button type="button" class="btn ghost danger" data-action="delete-law" data-id="${esc(law.id)}">حذف التشريع</button>
+      </div>
     </div>
 
     ${meta.length ? `<dl class="meta-grid">
@@ -1205,6 +1495,130 @@ const Views = {
 };
 
 
+/* ═══════════ أداة اختيار التاريخ ═══════════ */
+/* ثلاث قوائم لا حقل نص: يوم من طول الشهر الفعلي، وشهر بأسمائه، وسنة هجرية.
+   سطرٌ تحتها يبيّن ما اختيرَ بالهجري وما يوافقه بالميلادي.
+   النص الذي كُتب يدوياً قبل الأداة يبقى محفوظاً حتى يُختار تاريخ يستبدله. */
+
+const DatePick = {
+  markup(id, label, value) {
+    const picked = parseHijri(value);
+    const legacy = picked ? '' : String(value ?? '').trim();
+    const length = picked ? hijriMonthLength(picked.y, picked.m) : 30;
+
+    const years = [];
+    for (let y = HIJRI_MAX_YEAR; y >= HIJRI_MIN_YEAR; y--) years.push(y);
+    const on = test => test ? 'selected' : '';
+
+    return `
+    <div class="field" data-date="${esc(id)}">
+      <label for="${esc(id)}-d">${esc(label)}</label>
+      <div class="datepick">
+        <select id="${esc(id)}-d" aria-label="اليوم">
+          <option value="" ${on(!picked)}>اليوم</option>
+          ${Array.from({ length }, (_, i) => i + 1).map(d =>
+            `<option value="${d}" ${on(picked && picked.d === d)}>${arabicNumber(d)}</option>`).join('')}
+        </select>
+        <select id="${esc(id)}-m" aria-label="الشهر">
+          <option value="" ${on(!picked)}>الشهر</option>
+          ${HIJRI_MONTHS.map((name, i) =>
+            `<option value="${i + 1}" ${on(picked && picked.m === i + 1)}>${esc(name)}</option>`).join('')}
+        </select>
+        <select id="${esc(id)}-y" aria-label="السنة">
+          <option value="" ${on(!picked)}>السنة</option>
+          ${years.map(y =>
+            `<option value="${y}" ${on(picked && picked.y === y)}>${arabicNumber(y)}هـ</option>`).join('')}
+        </select>
+        <button type="button" class="btn ghost sm" data-action="clear-date" data-id="${esc(id)}">امسح</button>
+      </div>
+      <input type="hidden" id="${esc(id)}-raw" value="${esc(legacy)}">
+      <p class="datepick-echo" id="${esc(id)}-echo">${esc(this.echo(id, value))}</p>
+    </div>`;
+  },
+
+  /** القيمة المختارة، أو النص السابق إن لم يكتمل الاختيار. */
+  read(id) {
+    const day = $('#' + id + '-d')?.value;
+    const month = $('#' + id + '-m')?.value;
+    const year = $('#' + id + '-y')?.value;
+    if (day && month && year) return `${year}-${month}-${day}`;
+    return $('#' + id + '-raw')?.value.trim() || '';
+  },
+
+  /** السطر المبيِّن. يُقرأ من الحقول عند التغيير، ومن القيمة عند أول رسم. */
+  echo(id, initial) {
+    const value = initial !== undefined ? String(initial ?? '').trim() : this.read(id);
+    if (!value) return 'لم يُحدَّد';
+    return parseHijri(value) ? formatHijri(value) : `نصّ مكتوب سابقاً: ${value}`;
+  },
+
+  /** طول الشهر يختلف، فتُبنى قائمة الأيام من جديد عند كل تغيير. */
+  refresh(id) {
+    const year = Number($('#' + id + '-y')?.value);
+    const month = Number($('#' + id + '-m')?.value);
+    const days = $('#' + id + '-d');
+
+    if (days && year && month) {
+      const length = hijriMonthLength(year, month);
+      const chosen = Number(days.value);
+      days.innerHTML = '<option value="">اليوم</option>'
+        + Array.from({ length }, (_, i) => i + 1).map(d =>
+            `<option value="${d}" ${d === chosen ? 'selected' : ''}>${arabicNumber(d)}</option>`).join('');
+    }
+    const echo = $('#' + id + '-echo');
+    if (echo) echo.textContent = this.echo(id);
+  },
+
+  clear(id) {
+    for (const suffix of ['-d', '-m', '-y', '-raw']) {
+      const field = $('#' + id + suffix);
+      if (field) field.value = '';
+    }
+    this.refresh(id);
+  },
+
+  /**
+   * تاريخ السريان يأتي في الأنظمة على وجهين: تاريخاً محدداً، أو مدةً من
+   * تاريخ النشر — كنظام الإثبات: «بعد مائة وثمانين يوماً». فالوجهان معاً.
+   */
+  effective(law) {
+    const term = TERM_VALUE.exec(String(law?.effectiveAt ?? '').trim());
+    const isTerm = !!term;
+
+    return `
+      <div class="field">
+        <label for="lf-eff-mode">تاريخ السريان</label>
+        <select id="lf-eff-mode" class="narrow">
+          <option value="date" ${isTerm ? '' : 'selected'}>تاريخ محدد</option>
+          <option value="term" ${isTerm ? 'selected' : ''}>مدة من تاريخ النشر</option>
+        </select>
+      </div>
+      <div data-eff="date" ${isTerm ? 'hidden' : ''}>
+        ${this.markup('lf-effective', 'يبدأ السريان في', isTerm ? '' : law?.effectiveAt)}
+      </div>
+      <div class="field" data-eff="term" ${isTerm ? '' : 'hidden'}>
+        <label for="lf-eff-n">يسري بعد</label>
+        <div class="datepick">
+          <input id="lf-eff-n" type="number" min="1" max="9999"
+            value="${term ? esc(term[1]) : '90'}" aria-label="المقدار">
+          <select id="lf-eff-u" aria-label="الوحدة">
+            <option value="d" ${term && term[2] === 'm' ? '' : 'selected'}>يوماً</option>
+            <option value="m" ${term && term[2] === 'm' ? 'selected' : ''}>شهراً</option>
+          </select>
+          <span class="composer-hint">من تاريخ النشر</span>
+        </div>
+      </div>`;
+  },
+
+  /** قراءة تاريخ السريان على وجهه المختار. */
+  readEffective() {
+    if ($('#lf-eff-mode')?.value !== 'term') return this.read('lf-effective');
+    const amount = Number($('#lf-eff-n').value);
+    return amount > 0 ? '+' + amount + $('#lf-eff-u').value : '';
+  },
+};
+
+
 /* ═══════════ النوافذ: تحرير التشريعات والمواد ═══════════ */
 
 const Sheet = {
@@ -1237,11 +1651,9 @@ const Sheet = {
             `<option value="${esc(s)}" ${law?.status === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>
         ${field('lf-instrument', 'أداة الإصدار', law?.instrument, 'مرسوم ملكي م/٥١')}
       </div>
-      <div class="grid3">
-        ${field('lf-issued', 'تاريخ الإصدار', law?.issuedAt, '٢٣ / ٨ / ١٤٢٦هـ')}
-        ${field('lf-published', 'تاريخ النشر', law?.publishedAt, '٢٧ / ٩ / ١٤٢٦هـ')}
-        ${field('lf-effective', 'تاريخ السريان', law?.effectiveAt, 'بعد ٩٠ يوماً من النشر')}
-      </div>
+      ${DatePick.markup('lf-issued', 'تاريخ الإصدار', law?.issuedAt)}
+      ${DatePick.markup('lf-published', 'تاريخ النشر', law?.publishedAt)}
+      ${DatePick.effective(law)}
       <div class="grid2">
         ${field('lf-gazette', 'جهة النشر والعدد', law?.gazette, 'أم القرى — العدد ٤٠٦٨')}
         ${field('lf-authority', 'الجهة المختصة', law?.authority)}
@@ -1310,6 +1722,7 @@ const Actions = {
   'new-article':  el => Sheet.article(null, el.dataset.id),
   'edit-article': el => Sheet.article(el.dataset.id),
   'close-sheet':  () => Sheet.close(),
+  'clear-date':   el => DatePick.clear(el.dataset.id),
   'cancel-edit':  () => { State.editingNoteId = null; render(); },
 
   'new-article-current': () => Sheet.article(null, Router.current.id),
@@ -1347,9 +1760,9 @@ const Actions = {
       kind:        $('#lf-kind').value,
       status:      $('#lf-status').value,
       instrument:  $('#lf-instrument').value.trim(),
-      issuedAt:    $('#lf-issued').value.trim(),
-      publishedAt: $('#lf-published').value.trim(),
-      effectiveAt: $('#lf-effective').value.trim(),
+      issuedAt:    DatePick.read('lf-issued'),
+      publishedAt: DatePick.read('lf-published'),
+      effectiveAt: DatePick.readEffective(),
       gazette:     $('#lf-gazette').value.trim(),
       authority:   $('#lf-authority').value.trim(),
       summary:     $('#lf-summary').value.trim(),
@@ -1387,6 +1800,7 @@ const Actions = {
     Store.commit();
     Sheet.close();
     Router.go('laws');
+    render();
     toast('حُذف التشريع');
   },
 
@@ -1486,6 +1900,20 @@ function bindEvents() {
     if (handler) { event.preventDefault(); handler(trigger); }
   });
 
+  // اختيار مصدر أو طلب إضافة مصدر جديد.
+  document.addEventListener('change', event => {
+    if (event.target.id === 'note-source') { Compose.onSourceChange(event.target); return; }
+
+    // تبديل وجه تاريخ السريان: تاريخ محدد أو مدة.
+    if (event.target.id === 'lf-eff-mode') {
+      for (const block of $$('[data-eff]')) block.hidden = block.dataset.eff !== event.target.value;
+      return;
+    }
+    // أي تغيير داخل أداة تاريخ يعيد بناء أيام الشهر ويحدّث سطر البيان.
+    const picker = event.target.closest('[data-date]');
+    if (picker) DatePick.refresh(picker.dataset.date);
+  });
+
   // الكتابة في مربع الحاشية أو حقل البحث.
   document.addEventListener('input', event => {
     if (event.target.id === 'note-input') {
@@ -1551,12 +1979,17 @@ const BUNDLED_LAWS = [{
     title:       'نظام الإثبات',
     kind:        'نظام',
     status:      'ساري',
-    publishedAt: '٤ / ٦ / ١٤٤٣هـ — ٧ يناير ٢٠٢٢م',
+    publishedAt: '1443-6-4',
     gazette:     'أم القرى',
-    effectiveAt: 'بعد (مائة وثمانين) يوماً من تاريخ النشر',
+    effectiveAt: '+180d',
     summary:     'يسري على المعاملات المدنية والتجارية، وينظّم أدلة الإثبات: '
                + 'الإقرار والكتابة والدليل الرقمي والشهادة والقرائن والعرف واليمين '
                + 'والمعاينة والخبرة. مائة وتسع وعشرون مادة في أحد عشر باباً.',
+  },
+  // ما كُتب نصاً قبل أداة التاريخ، ليُستبدل بالقيمة المنظَّمة في الدفاتر القائمة.
+  superseded: {
+    publishedAt: ['٤ / ٦ / ١٤٤٣هـ — ٧ يناير ٢٠٢٢م'],
+    effectiveAt: ['بعد (مائة وثمانين) يوماً من تاريخ النشر'],
   },
   articles: [
   ["ith_1", "١", "الباب الأول — أحكام عامة", "", "", "تسري أحكام هذا النظام على المعاملات المدنية والتجارية."],
