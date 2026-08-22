@@ -183,6 +183,30 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .mention:hover{border-color:var(--border-strong)}
 .src{font-style:italic}
 .src-new{width:auto;max-width:180px;padding:5px var(--s2);font-size:11.5px}
+.pick{display:contents}
+
+/* ─── الموضوع الرئيسي وأصل الحاشية ─── */
+.topic-head{
+  display:inline-block;font-family:Amiri,serif;font-size:18px;line-height:1.2;
+  margin-top:var(--s3);border-bottom:1px solid var(--border-strong);
+}
+.topic-head:hover{background:var(--elevated)}
+.ghosted{color:var(--muted)}
+.ghosted s{text-decoration-thickness:1px}
+.free{font-weight:500;color:var(--ink)}
+.compose-block{margin-bottom:var(--s5)}
+
+/* ─── طيّة (الديباجة) ─── */
+.fold{
+  border:1px solid var(--border-subtle);border-radius:var(--r);
+  background:#fff;padding:var(--s3) var(--s4);margin-top:var(--s3);
+}
+.fold summary{font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;list-style:none}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary::before{content:"◂ "}
+.fold[open] summary{color:var(--ink);margin-bottom:var(--s3)}
+.fold[open] summary::before{content:"▾ "}
+.fold .matn{border:none;padding:0;background:transparent}
 
 /* ─── مرشِّحات ─── */
 .chips{display:flex;flex-wrap:wrap;gap:var(--s1);align-items:center;margin-bottom:var(--s4)}
@@ -729,7 +753,7 @@ const Store = (() => {
 
 const Model = {
   law:     id => Store.data.laws.find(l => l.id === id) || null,
-  article: id => Store.data.articles.find(a => a.id === id) || null,
+  article: id => (id ? Store.data.articles.find(a => a.id === id) : null) || null,
   note:    id => Store.data.notes.find(n => n.id === id) || null,
 
   /** مواد تشريع معيّن مرتَّبة رقمياً. */
@@ -746,16 +770,57 @@ const Model = {
       .sort((a, b) => b.createdAt - a.createdAt);
   },
 
-  notesCountOfLaw(lawId) {
-    const ids = new Set(this.articlesOfLaw(lawId).map(a => a.id));
-    return Store.data.notes.filter(n => ids.has(n.articleId)).length;
+  /** حواشٍ مرتبطة بالتشريع كلّه لا بمادةٍ منه — تُكتب حرّةً ثم تُنسب إليه. */
+  looseNotesOfLaw(lawId) {
+    return Store.data.notes
+      .filter(n => !n.articleId && n.lawId === lawId)
+      .sort((a, b) => b.createdAt - a.createdAt);
   },
 
-  /** المواضيع تُشتق من نص الحاشية — لا تُخزَّن، فلا تتعارض مع النص. */
-  topicsOf(note) {
-    const found = String(note.body).matchAll(TOPIC_PATTERN);
-    return [...new Set([...found].map(m => canonicalTopic(m[1])).filter(Boolean))];
+  notesCountOfLaw(lawId) {
+    const ids = new Set(this.articlesOfLaw(lawId).map(a => a.id));
+    return Store.data.notes.filter(n =>
+      (n.articleId && ids.has(n.articleId)) || (!n.articleId && n.lawId === lawId)).length;
   },
+
+  /** المواد التي تشير إليها الحاشية بعلامة @، محلولةً داخل تشريعها. */
+  mentionsOf(note) {
+    const law = this.lawOfNote(note);
+    if (!law) return [];
+    const out = [];
+    for (const found of String(note.body).matchAll(MENTION_PATTERN)) {
+      const target = this.articleByNo(law.id, found[1]);
+      if (target && target.id !== note.articleId && !out.includes(target.id)) out.push(target.id);
+    }
+    return out;
+  },
+
+  /** ظهر الروابط: حواشٍ من مواضع أخرى تشير إلى هذه المادة. */
+  notesMentioning(articleId) {
+    return Store.data.notes
+      .filter(n => n.articleId !== articleId && this.mentionsOf(n).includes(articleId))
+      .sort((a, b) => b.createdAt - a.createdAt);
+  },
+
+  /** عدد الإشارات لكل مادة في مرورٍ واحد — أرخص من سؤال كل مادة على حدة. */
+  mentionCounts() {
+    const counts = new Map();
+    for (const note of Store.data.notes) {
+      for (const id of this.mentionsOf(note)) counts.set(id, (counts.get(id) || 0) + 1);
+    }
+    return counts;
+  },
+
+  /**
+   * مواضيع الحاشية: الموضوع الرئيسي — إن اختير — ثم ما كُتب داخل النص بعلامة #.
+   * الرئيسي حقلٌ مستقل لأن الحاشية الحرة لا مادة تحملها، فالموضوع هو موضعها.
+   */
+  topicsOf(note) {
+    const inline = [...String(note.body).matchAll(TOPIC_PATTERN)].map(m => canonicalTopic(m[1]));
+    return [...new Set([this.mainTopicOf(note), ...inline].filter(Boolean))];
+  },
+
+  mainTopicOf: note => canonicalTopic(String(note.topic || '').trim()),
 
   /** مادة برقمها داخل تشريع معيّن — تُستعمل لحلّ الإشارات بعلامة @. */
   articleByNo(lawId, no) {
@@ -765,10 +830,14 @@ const Model = {
       .find(a => a.lawId === lawId && articleSortKey(a.no) === key) || null;
   },
 
-  /** التشريع الذي تنتمي إليه الحاشية، عبر مادتها. */
+  /**
+   * التشريع الذي تنتمي إليه الحاشية: عبر مادتها إن كانت تبدأ من مادة،
+   * وإلا عبر التشريع الذي نُسبت إليه. وقد لا يكون لها تشريع أصلاً.
+   */
   lawOfNote(note) {
     const article = this.article(note.articleId);
-    return article ? this.law(article.lawId) : null;
+    if (article) return this.law(article.lawId);
+    return note.lawId ? this.law(note.lawId) : null;
   },
 
   /** المصادر المستعملة في الحواشي مع عدد مرّاتها — تُشتق ولا تُخزَّن في قائمة. */
@@ -837,6 +906,7 @@ const Router = (() => {
   function handleChange() {
     current = parse();
     State.editingNoteId = null;   // لا يُحمل تحرير حاشية عبر التنقل
+    State.composing = false;
     render();
     window.scrollTo({ top: 0 });
   }
@@ -882,25 +952,51 @@ function renderNoteBody(note) {
 }
 
 /**
- * بطاقة حاشية.
+ * موضع الحاشية في الدفتر: مادتها إن بدأت من مادة، وإلا التشريع المنسوبة
+ * إليه، وإلا أثر ما حُذف. الحاشية التي لا شيء من ذلك لها حاشية حرة.
+ */
+function noteOrigin(note, options) {
+  const article = Model.article(note.articleId);
+  if (article) {
+    if (!options.showArticle) return '';
+    const law = Model.law(article.lawId);
+    return `<button type="button" class="link" data-action="open-article" data-id="${esc(article.id)}">
+      ${esc(law ? law.title : '')} · المادة ${esc(article.no)}</button>`;
+  }
+  if (note.orphan) {
+    const { lawTitle, articleNo } = note.orphan;
+    const trace = [lawTitle, articleNo ? 'المادة ' + articleNo : ''].filter(Boolean).join(' · ');
+    return `<span class="ghosted"><s>${esc(trace)}</s> — حُذف</span>`;
+  }
+  const law = note.lawId ? Model.law(note.lawId) : null;
+  if (law) {
+    return `<button type="button" class="link" data-action="open-law" data-id="${esc(law.id)}">
+      ${esc(law.title)}</button>`;
+  }
+  return '<span class="free">حاشية حرة</span>';
+}
+
+/**
+ * بطاقة حاشية. تنقلب محرِّراً في مكانها متى كانت هي المحرَّرة، فلا يُنقل
+ * المستخدم إلى صفحة أخرى ليعدّل سطراً.
  * @param {object} note
  * @param {{showArticle?: boolean}} options
  */
 function NoteCard(note, options = {}) {
-  const article = Model.article(note.articleId);
-  const law = article ? Model.law(article.lawId) : null;
-  const topics = Model.topicsOf(note);
+  if (State.editingNoteId === note.id) {
+    return `<div class="compose-block">${Compose.template(note.articleId || null, note)}</div>`;
+  }
+
+  const main = Model.mainTopicOf(note);
+  const rest = Model.topicsOf(note).filter(t => t !== main);
+  const origin = noteOrigin(note, options);
 
   return `
   <article class="card note" data-type="${esc(note.type)}">
     <div class="card-meta">
       <span class="tlabel">${esc(NOTE_TYPES[note.type] || note.type)}</span>
       <span class="dot" aria-hidden="true"></span>
-      ${options.showArticle && article ? `
-        <button type="button" class="link" data-action="open-article" data-id="${esc(article.id)}">
-          ${esc(law ? law.title : '')} · المادة ${esc(article.no)}
-        </button>
-        <span class="dot" aria-hidden="true"></span>` : ''}
+      ${origin ? origin + '<span class="dot" aria-hidden="true"></span>' : ''}
       <span>${timeAgo(note.createdAt)}</span>
       ${note.updatedAt > note.createdAt ? '<span class="dot" aria-hidden="true"></span><span>مُعدَّلة</span>' : ''}
       ${note.source ? `<span class="dot" aria-hidden="true"></span>
@@ -908,8 +1004,10 @@ function NoteCard(note, options = {}) {
       <span class="spacer"></span>
       <button type="button" class="btn ghost sm" data-action="edit-note" data-id="${esc(note.id)}">تحرير</button>
     </div>
+    ${main ? `<button type="button" class="topic-head" data-action="filter-topic"
+      data-topic="${esc(main)}">${esc(displayTopic(main))}</button>` : ''}
     <div class="note-body">${renderNoteBody(note)}</div>
-    ${topics.length ? `<div class="topics">${topics.map(t =>
+    ${rest.length ? `<div class="topics">${rest.map(t =>
       `<button type="button" class="topic" data-action="filter-topic" data-topic="${esc(t)}">${esc(displayTopic(t))}</button>`
     ).join('')}</div>` : ''}
   </article>`;
@@ -935,52 +1033,88 @@ const Compose = (() => {
   let acStart = -1;      // موضع # أو @ في النص
   let acKind  = 'topic'; // نوع الاقتراح: موضوع أو إشارة إلى مادة
   let acOpen  = false;
+  let acList  = null;    // قائمة المحرِّر النشط — قد يكون في الصفحة أكثر من محرِّر
 
   /**
-   * المصدر يُختار من قائمة ما استُعمل قبلاً، أو يُكتب جديداً عبر خيار «إضافة».
-   * القائمة مشتقة من الحواشي نفسها، فلا يوجد سجل مصادر منفصل يتعارض معها.
+   * قائمة اختيار من قيمٍ سابقة مع بابٍ لقيمة جديدة.
+   * القائمة مشتقة من الحواشي نفسها، فلا يوجد سجل منفصل يتعارض معها.
    */
-  function sourceControl(note) {
-    const sources = Model.allSources().map(s => s.source);
-    const current = String(note?.source || '').trim();
-    const known = current && !sources.includes(current) ? [current, ...sources] : sources;
-
+  function pickControl(cls, options, current, words, show = String) {
+    const known = current && !options.includes(current) ? [current, ...options] : options;
     return `
-      <label class="sr" for="note-source">مصدر الحاشية</label>
-      <select id="note-source">
-        <option value="">بلا مصدر</option>
-        ${known.map(s =>
-          `<option value="${esc(s)}" ${current === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
-        <option value="" data-new="yes">+ إضافة مصدر…</option>
-      </select>
-      <input id="note-source-new" class="src-new" placeholder="اسم المصدر" hidden
-        aria-label="مصدر جديد">`;
+      <span class="pick">
+        <select class="${cls}" aria-label="${esc(words.label)}">
+          <option value="">${esc(words.none)}</option>
+          ${known.map(value => `<option value="${esc(value)}" ${current === value ? 'selected' : ''}>
+            ${esc(show(value))}</option>`).join('')}
+          <option value="" data-new="yes">${esc(words.add)}</option>
+        </select>
+        <input class="pick-new src-new" placeholder="${esc(words.hint)}" hidden
+          aria-label="${esc(words.hint)}">
+      </span>`;
   }
 
+  const sourceControl = note => pickControl(
+    'note-source',
+    Model.allSources().map(s => s.source),
+    String(note?.source || '').trim(),
+    { label: 'مصدر الحاشية', none: 'بلا مصدر', add: '+ إضافة مصدر…', hint: 'اسم المصدر' });
+
+  /** الموضوع الرئيسي — موضع الحاشية حين لا تحملها مادة. */
+  const topicControl = note => pickControl(
+    'note-topic',
+    Model.allTopics().map(t => t.topic),
+    note ? Model.mainTopicOf(note) : '',
+    { label: 'الموضوع الرئيسي', none: 'بلا موضوع رئيسي',
+      add: '+ موضوع رئيسي جديد…', hint: 'اسم الموضوع' },
+    topic => '#' + displayTopic(topic));
+
+  /** الحاشية الحرة تُنسب إلى تشريع اختياراً، وبه تُحلّ إشاراتها بعلامة @. */
+  function lawControl(lawId) {
+    const { laws } = Store.data;
+    if (!laws.length) return '';
+    return `
+      <select class="note-law" aria-label="التشريع المنسوبة إليه">
+        <option value="">بلا تشريع</option>
+        ${laws.map(law => `<option value="${esc(law.id)}" ${lawId === law.id ? 'selected' : ''}>
+          ${esc(law.title)}</option>`).join('')}
+      </select>`;
+  }
+
+  /**
+   * @param {?string} articleId المادة التي تبدأ منها الحاشية، أو null لحاشية حرة.
+   * @param {?object} note الحاشية المحرَّرة، أو null لحاشية جديدة.
+   */
   function template(articleId, note) {
     const isEdit = !!note;
+    const free = !articleId;
+    const lawId = free ? String(note?.lawId || '') : '';
+
     return `
-    <div class="composer" data-composer data-article="${esc(articleId)}" ${isEdit ? `data-note="${esc(note.id)}"` : ''}>
+    <div class="composer" data-composer data-article="${esc(articleId || '')}"
+      ${isEdit ? `data-note="${esc(note.id)}"` : ''}>
       <div class="composer-wrap">
-        <label class="sr" for="note-input">نص الحاشية</label>
-        <textarea id="note-input" rows="3"
-          placeholder="اكتب حاشيتك على هذه المادة… # لموضوع، @ للإشارة إلى مادة"
-          aria-autocomplete="list" aria-controls="topic-ac">${esc(note ? note.body : '')}</textarea>
-        <ul class="ac" id="topic-ac" role="listbox" hidden></ul>
+        <textarea class="note-input" rows="3" aria-label="نص الحاشية" aria-autocomplete="list"
+          placeholder="${free
+            ? 'اكتب ملاحظتك… # لموضوع، @ للإشارة إلى مادة'
+            : 'اكتب حاشيتك على هذه المادة… # لموضوع، @ للإشارة إلى مادة'}">${esc(note ? note.body : '')}</textarea>
+        <ul class="ac" role="listbox" hidden></ul>
       </div>
       <div class="composer-foot">
-        <label class="sr" for="note-type">نوع الحاشية</label>
-        <select id="note-type">
+        <select class="note-type" aria-label="نوع الحاشية">
           ${Object.entries(NOTE_TYPES).map(([value, label]) =>
             `<option value="${value}" ${note && note.type === value ? 'selected' : ''}>${label}</option>`).join('')}
         </select>
+        ${topicControl(note)}
+        ${free ? lawControl(lawId) : ''}
         ${sourceControl(note)}
         <button type="button" class="btn" data-action="save-note">${isEdit ? 'احفظ التعديل' : 'أضف الحاشية'}</button>
         ${isEdit ? `
           <button type="button" class="btn ghost" data-action="cancel-edit">إلغاء</button>
-          <button type="button" class="btn ghost sm" data-action="delete-note" data-id="${esc(note.id)}"
-            style="color:var(--danger);border-color:var(--danger)">حذف</button>`
-        : '<span class="composer-hint">تُربط تلقائياً بهذه المادة</span>'}
+          <button type="button" class="btn ghost sm danger" data-action="delete-note" data-id="${esc(note.id)}">حذف</button>`
+        : `<span class="composer-hint">${free
+            ? 'اربطها بموضوع رئيسي، أو أشِر إلى مادة بعلامة @'
+            : 'تُربط تلقائياً بهذه المادة'}</span>`}
       </div>
     </div>`;
   }
@@ -1005,24 +1139,27 @@ const Compose = (() => {
   }
 
   function closeAutocomplete() {
+    if (acList) { acList.hidden = true; acList.innerHTML = ''; }
+    acList = null;
     acOpen = false;
     acItems = [];
     acIndex = 0;
     acStart = -1;
     acKind = 'topic';
-    const list = $('#topic-ac');
-    if (list) { list.hidden = true; list.innerHTML = ''; }
   }
 
   function openAutocomplete(textarea) {
     const token = activeToken(textarea);
-    if (!token) { closeAutocomplete(); return; }
+    const list = textarea.closest('[data-composer]')?.querySelector('.ac');
+    if (!token || !list) { closeAutocomplete(); return; }
 
     const items = token.kind === 'mention'
       ? mentionItems(textarea, token.query)
       : topicItems(token.query);
     if (!items.length) { closeAutocomplete(); return; }
 
+    if (acList && acList !== list) closeAutocomplete();
+    acList = list;
     acItems = items;
     acKind = token.kind;
     acStart = token.start;
@@ -1045,32 +1182,51 @@ const Compose = (() => {
     return items;
   }
 
-  /** مواد التشريع نفسه، مرشَّحة برقم المادة أو بكلمة من نصها. */
+  /** التشريع الذي تُحلّ فيه الإشارات: تشريع المادة، أو المختار للحاشية الحرة. */
+  function scopeOf(composer) {
+    const here = Model.article(composer.dataset.article);
+    if (here) return { lawId: here.lawId, here };
+    return { lawId: composer.querySelector('.note-law')?.value || '', here: null };
+  }
+
+  /**
+   * مواد التشريع نفسه، مرشَّحة برقم المادة أو بكلمة من نصها.
+   * وحين لا تشريع للحاشية الحرة بعد، تُعرض مواد التشريعات كلها معنونةً بها،
+   * فأول اختيار هو الذي ينسب الحاشية إلى تشريعه.
+   */
   function mentionItems(textarea, rawQuery) {
     const composer = textarea.closest('[data-composer]');
-    const here = composer ? Model.article(composer.dataset.article) : null;
-    if (!here) return [];
+    if (!composer) return [];
+    const { lawId, here } = scopeOf(composer);
+
+    const pool = lawId
+      ? Model.articlesOfLaw(lawId)
+      : Store.data.laws.flatMap(law => Model.articlesOfLaw(law.id));
+    if (!pool.length) return [];
 
     const query = rawQuery.trim();
     // الرقم يُطابق أرقام المواد وحدها، وإلا طابَق أرقام البنود داخل النصوص.
     const isNumber = /^[٠-٩0-9]+$/.test(query);
     const prefix = isNumber ? String(articleSortKey(query)) : '';
 
-    return Model.articlesOfLaw(here.lawId)
-      .filter(a => a.id !== here.id)
+    return pool
+      .filter(a => !here || a.id !== here.id)
       .filter(a => {
         if (!query) return true;
         if (isNumber) return String(articleSortKey(a.no)).startsWith(prefix);
         return a.text.includes(query) || String(a.title || '').includes(query);
       })
       .slice(0, 8)
-      .map(a => ({ no: a.no, hint: (a.title || a.text).slice(0, 52) }));
+      .map(a => {
+        const law = lawId ? null : Model.law(a.lawId);
+        const body = (a.title || a.text).slice(0, 44);
+        return { no: a.no, lawId: a.lawId, hint: law ? `${law.title} · ${body}` : body };
+      });
   }
 
   function paint() {
-    const list = $('#topic-ac');
-    if (!list) return;
-    list.innerHTML = acItems.map((item, i) => `
+    if (!acList) return;
+    acList.innerHTML = acItems.map((item, i) => `
       <li role="option" data-i="${i}" aria-selected="${i === acIndex}">
         ${acKind === 'mention'
           ? `<span>المادة ${esc(item.no)}</span><span class="n">${esc(item.hint)}</span>`
@@ -1078,15 +1234,23 @@ const Compose = (() => {
               ? '<span class="new n">موضوع جديد</span>'
               : `<span class="n">${item.count}</span>`}`}
       </li>`).join('');
-    list.hidden = false;
-    const active = list.querySelector('[aria-selected="true"]');
+    acList.hidden = false;
+    const active = acList.querySelector('[aria-selected="true"]');
     if (active) active.scrollIntoView({ block: 'nearest' });
+  }
+
+  /** أول إشارةٍ في حاشية حرة تنسبها إلى تشريع المادة المختارة. */
+  function bindLaw(composer, lawId) {
+    const select = composer.querySelector('.note-law');
+    if (select && !select.value && lawId) select.value = lawId;
   }
 
   /** يستبدل المقطع الجاري كتابته بالموضوع أو الإشارة المختارة. */
   function accept(textarea, index) {
     const item = acItems[index];
     if (!item || acStart < 0) return;
+    if (acKind === 'mention') bindLaw(textarea.closest('[data-composer]'), item.lawId);
+
     const caret = textarea.selectionStart;
     const inserted = acKind === 'mention' ? '@' + item.no + ' ' : '#' + item.topic + ' ';
     textarea.value = textarea.value.slice(0, acStart) + inserted + textarea.value.slice(caret);
@@ -1126,22 +1290,22 @@ const Compose = (() => {
     }
   }
 
-  /** خيار «إضافة مصدر» يُعرَف بسمته، فلا نحتاج قيمةً سحرية قد تكون اسم مصدر. */
-  const wantsNewSource = select => select.selectedOptions[0]?.dataset.new === 'yes';
+  /** خيار «إضافة» يُعرَف بسمته، فلا نحتاج قيمةً سحرية قد تكون اسم مصدر. */
+  const wantsNew = select => select.selectedOptions[0]?.dataset.new === 'yes';
 
-  /** القيمة المختارة من القائمة، أو ما كُتب في حقل المصدر الجديد. */
-  function readSource(composer) {
-    const select = composer.querySelector('#note-source');
+  /** القيمة المختارة من القائمة، أو ما كُتب في حقل القيمة الجديدة. */
+  function readPick(composer, cls) {
+    const select = composer.querySelector('.' + cls);
     if (!select) return '';
-    if (!wantsNewSource(select)) return select.value.trim();
-    return composer.querySelector('#note-source-new').value.trim();
+    if (!wantsNew(select)) return select.value.trim();
+    return (select.closest('.pick')?.querySelector('.pick-new')?.value || '').trim();
   }
 
-  /** إظهار حقل الكتابة عند اختيار «إضافة مصدر». */
-  function onSourceChange(select) {
-    const field = select.closest('[data-composer]')?.querySelector('#note-source-new');
+  /** إظهار حقل الكتابة عند اختيار «إضافة». */
+  function onPickChange(select) {
+    const field = select.closest('.pick')?.querySelector('.pick-new');
     if (!field) return;
-    field.hidden = !wantsNewSource(select);
+    field.hidden = !wantsNew(select);
     if (!field.hidden) field.focus();
   }
 
@@ -1153,8 +1317,11 @@ const Compose = (() => {
       textarea.focus();
       return;
     }
-    const type = composer.querySelector('#note-type').value;
-    const source = readSource(composer);
+    const articleId = composer.dataset.article || null;
+    const type = composer.querySelector('.note-type').value;
+    const source = readPick(composer, 'note-source');
+    const topic = normalizeTopic(readPick(composer, 'note-topic'));
+    const lawId = articleId ? null : (composer.querySelector('.note-law')?.value || null);
     const editingId = composer.dataset.note;
 
     if (editingId) {
@@ -1163,19 +1330,24 @@ const Compose = (() => {
       note.body = body;
       note.type = type;
       note.source = source;
+      note.topic = topic;
       note.updatedAt = Date.now();
+      if (!articleId) note.lawId = lawId;
       State.editingNoteId = null;
       toast('حُفظ التعديل');
     } else {
       Store.data.notes.unshift({
         id: uid('note'),
-        articleId: composer.dataset.article,
+        articleId,
+        lawId,
         type,
         source,
+        topic,
         body,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
+      State.composing = false;
       toast('أُضيفت الحاشية');
     }
     Store.commit();
@@ -1183,7 +1355,7 @@ const Compose = (() => {
     render();
   }
 
-  return { template, openAutocomplete, closeAutocomplete, onKeyDown, accept, save, onSourceChange,
+  return { template, openAutocomplete, closeAutocomplete, onKeyDown, accept, save, onPickChange,
            get isOpen() { return acOpen; },
            acceptAt(textarea, i) { accept(textarea, i); } };
 })();
@@ -1196,6 +1368,7 @@ const State = {
   topicFilter: null,       // مرشِّح الموضوع
   query: '',               // بحث نصي داخل الحواشي
   editingNoteId: null,     // الحاشية قيد التحرير
+  composing: false,        // محرِّر الحاشية الحرة مفتوح في صفحة الحواشي
 };
 
 
@@ -1248,7 +1421,7 @@ const Views = {
         <div class="box">
           <h4>أسئلة لم تُحسم (${questions.length})</h4>
           ${questions.length ? questions.slice(0, 5).map(n => `
-            <button type="button" class="row" data-action="open-article" data-id="${esc(n.articleId)}">
+            <button type="button" class="row" data-action="open-note" data-id="${esc(n.id)}">
               <span class="rl">${esc(n.body.slice(0, 56))}…</span>
             </button>`).join('')
             : '<p class="lede">لا شيء معلّق.</p>'}
@@ -1283,9 +1456,17 @@ const Views = {
       <div>
         <div class="eyebrow">الحواشي</div>
         <h2>كل ما علّقته</h2>
-        <p class="lede">كل حاشية مرتبطة بمادتها. اضغط على المادة للعودة إلى نصها.</p>
+        <p class="lede">أكثر الحواشي تبدأ من مادة، وبعضها يبدأ من فكرة. اكتبها هنا،
+          ثم اربطها بموضوع رئيسي أو أشِر إلى مادة بعلامة @ فتظهر عندها.</p>
       </div>
+      <button type="button" class="btn ${State.composing ? 'ghost' : ''}" data-action="toggle-compose">
+        ${State.composing ? 'إغلاق المحرِّر' : 'حاشية حرة'}</button>
     </div>
+
+    ${State.composing ? `<div class="compose-block">
+      <div class="eyebrow">حاشية لا تبدأ من مادة</div>
+      ${Compose.template(null, null)}
+    </div>` : ''}
 
     <div class="field" style="max-width:420px">
       <label for="notes-search">بحث في نصوص الحواشي</label>
@@ -1310,7 +1491,10 @@ const Views = {
 
     ${list.length
       ? list.map(n => NoteCard(n, { showArticle: true })).join('')
-      : EmptyState('لا حواشي مطابقة', 'غيّر المرشِّح أو امسح البحث.')}`;
+      : Store.data.notes.length
+        ? EmptyState('لا حواشي مطابقة', 'غيّر المرشِّح أو امسح البحث.')
+        : EmptyState('لا حواشي بعد', 'ابدأ من مادة في تشريع، أو اكتب حاشية حرة تربطها بموضوع.',
+                     { action: 'toggle-compose', label: 'حاشية حرة' })}`;
   },
 
   /* ─── قائمة التشريعات ─── */
@@ -1361,6 +1545,8 @@ const Views = {
     if (!law) return Views.laws();
 
     const articles = Model.articlesOfLaw(law.id);
+    const loose = Model.looseNotesOfLaw(law.id);
+    const mentions = Model.mentionCounts();
 
     // تجميع المواد تحت الباب ثم الفصل ثم الفرع، مع الحفاظ على الترتيب الرقمي.
     const groups = [];
@@ -1424,6 +1610,11 @@ const Views = {
       ${meta.map(([term, value]) => `<div><dt>${esc(term)}</dt><dd>${esc(value)}</dd></div>`).join('')}
     </dl>` : ''}
 
+    ${law.preamble ? `<details class="fold">
+      <summary>ديباجة الإصدار${law.instrument ? ' — ' + esc(law.instrument) : ''}</summary>
+      <div class="matn sm">${esc(law.preamble)}</div>
+    </details>` : ''}
+
     <div class="eyebrow" style="margin-top:28px">
       المواد (${articles.length})
       <button type="button" class="btn sm" data-action="new-article" data-id="${esc(law.id)}"
@@ -1434,7 +1625,7 @@ const Views = {
       ${groups.map(group => `
         ${heading(group)}
         ${group.items.map(article => {
-          const count = Model.notesOfArticle(article.id).length;
+          const count = Model.notesOfArticle(article.id).length + (mentions.get(article.id) || 0);
           return `
           <button type="button" class="art-row" data-action="open-article" data-id="${esc(article.id)}">
             <span class="art-no">${esc(article.no)}</span>
@@ -1444,7 +1635,11 @@ const Views = {
         }).join('')}`).join('')}
     </div>`
     : EmptyState('لا مواد بعد', 'أضف مواد هذا التشريع لتتمكن من التعليق عليها.',
-                 { action: 'new-article-current', label: 'مادة جديدة' })}`;
+                 { action: 'new-article-current', label: 'مادة جديدة' })}
+
+    ${loose.length ? `
+      <div class="eyebrow" style="margin-top:32px">حواشٍ على التشريع عامةً (${loose.length})</div>
+      ${loose.map(n => NoteCard(n)).join('')}` : ''}`;
   },
 
   /* ─── صفحة مادة: النص ثم مربع الحاشية ثم الحواشي ─── */
@@ -1454,12 +1649,9 @@ const Views = {
 
     const law = Model.law(article.lawId);
     const notes = Model.notesOfArticle(article.id);
+    const mentioning = Model.notesMentioning(article.id);
     const { prev, next, index, total } = Model.neighbors(article);
     const trail = [article.part, article.chapter, article.branch].filter(Boolean);
-
-    // لا يُفتح المحرِّر إلا إذا كانت الحاشية تخص هذه المادة فعلاً.
-    const pending = State.editingNoteId ? Model.note(State.editingNoteId) : null;
-    const editing = pending && pending.articleId === article.id ? pending : null;
 
     return `
     <button type="button" class="crumb" data-action="open-law" data-id="${esc(article.lawId)}">
@@ -1484,13 +1676,17 @@ const Views = {
       <span class="pos">${index + 1} من ${total}</span>
     </nav>
 
-    <div class="eyebrow" style="margin-top:32px">${editing ? 'تحرير حاشية' : 'أضف حاشية'}</div>
-    ${Compose.template(article.id, editing)}
+    <div class="eyebrow" style="margin-top:32px">أضف حاشية</div>
+    ${Compose.template(article.id, null)}
 
     <div class="eyebrow" style="margin-top:32px">حواشيك على هذه المادة (${notes.length})</div>
     ${notes.length
       ? notes.map(n => NoteCard(n)).join('')
-      : EmptyState('لا حواشي على هذه المادة', 'أول حاشية عادةً هي التنبيه العملي الذي تكرر عليك.')}`;
+      : EmptyState('لا حواشي على هذه المادة', 'أول حاشية عادةً هي التنبيه العملي الذي تكرر عليك.')}
+
+    ${mentioning.length ? `
+      <div class="eyebrow" style="margin-top:32px">حواشٍ تشير إلى هذه المادة (${mentioning.length})</div>
+      ${mentioning.map(n => NoteCard(n, { showArticle: true })).join('')}` : ''}`;
   },
 };
 
@@ -1660,6 +1856,9 @@ const Sheet = {
       </div>
       <div class="field"><label for="lf-summary">ملخص</label>
         <textarea id="lf-summary" rows="2">${esc(law?.summary || '')}</textarea></div>
+      <div class="field"><label for="lf-preamble">الديباجة — نص أداة الإصدار</label>
+        <textarea id="lf-preamble" rows="5"
+          placeholder="بعون الله تعالى، نحن…">${esc(law?.preamble || '')}</textarea></div>
       <div class="sheet-foot">
         <button type="button" class="btn" data-action="save-law" data-id="${esc(lawId || '')}">
           ${law ? 'احفظ' : 'أضف التشريع'}</button>
@@ -1713,6 +1912,22 @@ const Sheet = {
 
 /* ═══════════ الإجراءات ═══════════ */
 
+/**
+ * حذف التشريع أو المادة لا يمحو ما كُتب عندهما؛ الحاشية ملك صاحبها لا ملك
+ * النص. فتُفكّ عن مادتها ويُحفظ أثرها لتبقى مفهومة، وتُنسب إلى التشريع إن بقي.
+ */
+function detachNote(note, law, article, nextLawId) {
+  if (!note.orphan) {
+    note.orphan = {
+      lawTitle:     law ? law.title : '',
+      articleNo:    article ? article.no : '',
+      articleTitle: article ? (article.title || '') : '',
+    };
+  }
+  note.articleId = null;
+  note.lawId = nextLawId || null;
+}
+
 const Actions = {
   'open-laws':    () => Router.go('laws'),
   'open-law':     el => Router.go('law', el.dataset.id),
@@ -1742,9 +1957,31 @@ const Actions = {
     const note = Model.note(el.dataset.id);
     if (!note) return;
     State.editingNoteId = note.id;
-    if (Router.current.view === 'article' && Router.current.id === note.articleId) render();
-    else Router.go('article', note.articleId);
-    setTimeout(() => $('#note-input')?.focus(), 0);
+    State.composing = false;
+    render();
+    setTimeout(() => {
+      const box = $(`[data-note="${CSS.escape(note.id)}"] textarea`);
+      if (!box) return;
+      box.focus();
+      box.setSelectionRange(box.value.length, box.value.length);
+      box.scrollIntoView({ block: 'center' });
+    }, 0);
+  },
+
+  'open-note': el => {
+    const note = Model.note(el.dataset.id);
+    if (!note) return;
+    if (note.articleId) { State.editingNoteId = null; Router.go('article', note.articleId); return; }
+    State.topicFilter = null;
+    State.query = '';
+    Router.go('notes');
+  },
+
+  'toggle-compose': () => {
+    State.composing = !State.composing;
+    State.editingNoteId = null;
+    if (Router.current.view === 'notes') render(); else Router.go('notes');
+    if (State.composing) setTimeout(() => $('.compose-block .note-input')?.focus(), 0);
   },
 
   'save-note': el => {
@@ -1766,6 +2003,7 @@ const Actions = {
       gazette:     $('#lf-gazette').value.trim(),
       authority:   $('#lf-authority').value.trim(),
       summary:     $('#lf-summary').value.trim(),
+      preamble:    $('#lf-preamble').value.trim(),
     };
     if (el.dataset.id) {
       const existing = Model.law(el.dataset.id);
@@ -1790,18 +2028,21 @@ const Actions = {
     const law = Model.law(el.dataset.id);
     if (!law) return;
     const articleIds = new Set(Model.articlesOfLaw(law.id).map(a => a.id));
-    const noteCount = Store.data.notes.filter(n => articleIds.has(n.articleId)).length;
-    const message = `حذف «${law.title}» سيحذف ${articleIds.size} مادة و${noteCount} حاشية. لا يمكن التراجع.`;
+    const kept = Store.data.notes.filter(n =>
+      (n.articleId && articleIds.has(n.articleId)) || (!n.articleId && n.lawId === law.id));
+    const message = `حذف «${law.title}» سيحذف ${articleIds.size} مادة.`
+      + (kept.length ? ` وتبقى ${kept.length} حاشية في دفترك بنصّها ومواضيعها، دون مادة.` : '')
+      + ' لا يمكن التراجع.';
     if (!confirm(message)) return;
     if (law.bundled) Store.markDropped(law.id);
-    Store.data.notes    = Store.data.notes.filter(n => !articleIds.has(n.articleId));
+    for (const note of kept) detachNote(note, law, Model.article(note.articleId), null);
     Store.data.articles = Store.data.articles.filter(a => a.lawId !== law.id);
     Store.data.laws     = Store.data.laws.filter(l => l.id !== law.id);
     Store.commit();
     Sheet.close();
     Router.go('laws');
     render();
-    toast('حُذف التشريع');
+    toast(kept.length ? 'حُذف التشريع وبقيت حواشيه' : 'حُذف التشريع');
   },
 
   'save-article': el => {
@@ -1839,15 +2080,19 @@ const Actions = {
   'delete-article': el => {
     const article = Model.article(el.dataset.id);
     if (!article) return;
-    const noteCount = Model.notesOfArticle(article.id).length;
-    if (!confirm(`حذف المادة ${article.no} سيحذف ${noteCount} حاشية. لا يمكن التراجع.`)) return;
     const lawId = article.lawId;
-    Store.data.notes    = Store.data.notes.filter(n => n.articleId !== article.id);
+    const law = Model.law(lawId);
+    const kept = Model.notesOfArticle(article.id);
+    const message = `حذف المادة ${article.no}.`
+      + (kept.length ? ` وتبقى ${kept.length} حاشية في دفترك منسوبةً إلى التشريع، دون مادة.` : '')
+      + ' لا يمكن التراجع.';
+    if (!confirm(message)) return;
+    for (const note of kept) detachNote(note, law, article, lawId);
     Store.data.articles = Store.data.articles.filter(a => a.id !== article.id);
     Store.commit();
     Sheet.close();
     Router.go('law', lawId);
-    toast('حُذفت المادة');
+    toast(kept.length ? 'حُذفت المادة وبقيت حواشيها' : 'حُذفت المادة');
   },
 
   'delete-note': el => {
@@ -1879,17 +2124,17 @@ const Actions = {
 function bindEvents() {
   // منع فقدان التركيز عند النقر على اقتراح — يبقى المؤشر في مربع الكتابة.
   document.addEventListener('mousedown', event => {
-    if (event.target.closest('#topic-ac')) event.preventDefault();
+    if (event.target.closest('.ac')) event.preventDefault();
   });
 
   // نقر مفوَّض على كامل الصفحة.
   document.addEventListener('click', event => {
     if (event.target === $('#modal')) { Sheet.close(); return; }
 
-    // اختيار عنصر من قائمة المواضيع.
-    const option = event.target.closest('#topic-ac li');
+    // اختيار عنصر من قائمة الاقتراحات — قد يكون في الصفحة أكثر من محرِّر.
+    const option = event.target.closest('.ac li');
     if (option) {
-      const textarea = $('#note-input');
+      const textarea = option.closest('[data-composer]')?.querySelector('textarea');
       if (textarea) Compose.acceptAt(textarea, Number(option.dataset.i));
       return;
     }
@@ -1900,9 +2145,12 @@ function bindEvents() {
     if (handler) { event.preventDefault(); handler(trigger); }
   });
 
-  // اختيار مصدر أو طلب إضافة مصدر جديد.
+  // اختيار مصدر أو موضوع رئيسي، أو طلب إضافة قيمة جديدة.
   document.addEventListener('change', event => {
-    if (event.target.id === 'note-source') { Compose.onSourceChange(event.target); return; }
+    if (event.target.matches('.note-source, .note-topic')) {
+      Compose.onPickChange(event.target);
+      return;
+    }
 
     // تبديل وجه تاريخ السريان: تاريخ محدد أو مدة.
     if (event.target.id === 'lf-eff-mode') {
@@ -1916,7 +2164,7 @@ function bindEvents() {
 
   // الكتابة في مربع الحاشية أو حقل البحث.
   document.addEventListener('input', event => {
-    if (event.target.id === 'note-input') {
+    if (event.target.matches('.note-input')) {
       Compose.openAutocomplete(event.target);
       return;
     }
@@ -1930,15 +2178,15 @@ function bindEvents() {
   });
 
   document.addEventListener('keydown', event => {
-    if (event.target.id === 'note-input') { Compose.onKeyDown(event, event.target); return; }
+    if (event.target.matches('.note-input')) { Compose.onKeyDown(event, event.target); return; }
     if (event.key === 'Escape' && !$('#modal').hidden) Sheet.close();
   });
 
   // إغلاق قائمة الاقتراحات عند مغادرة مربع الكتابة.
   document.addEventListener('focusout', event => {
-    if (event.target.id === 'note-input') {
+    if (event.target.matches('.note-input')) {
       setTimeout(() => {
-        if (document.activeElement?.closest('#topic-ac')) return;
+        if (document.activeElement?.closest('.ac')) return;
         Compose.closeAutocomplete();
       }, 120);
     }
@@ -1954,6 +2202,8 @@ function bindEvents() {
         Store.replaceAll(JSON.parse(String(reader.result)));
         State.topicFilter = null;
         State.query = '';
+        State.editingNoteId = null;
+        State.composing = false;
         Router.go('home');
         render();
         toast('استُورد الملف');
@@ -1979,17 +2229,48 @@ const BUNDLED_LAWS = [{
     title:       'نظام الإثبات',
     kind:        'نظام',
     status:      'ساري',
+    instrument:  'مرسوم ملكي رقم (م/٤٣)',
+    issuedAt:    '1443-5-26',
     publishedAt: '1443-6-4',
     gazette:     'أم القرى',
     effectiveAt: '+180d',
     summary:     'يسري على المعاملات المدنية والتجارية، وينظّم أدلة الإثبات: '
                + 'الإقرار والكتابة والدليل الرقمي والشهادة والقرائن والعرف واليمين '
                + 'والمعاينة والخبرة. مائة وتسع وعشرون مادة في أحد عشر باباً.',
+    preamble:    'بعون الله تعالـى\n'
+               + 'نحن سلمان بن عبدالعزيز آل سعود\n'
+               + 'ملك المملكة العربية السعودية\n'
+               + '\n'
+               + 'بناءً على المادة (السبعين) من النظام الأساسي للحكم، الصادر بالأمر الملكي رقم (أ/90) بتاريخ 27 /8/ 1412هـ.\n'
+               + 'وبناءً على المادة (العشرين) من نظام مجلس الوزراء، الصادر بالأمر الملكي رقم (أ/13) بتاريخ 3 /3/ 1414هـ.\n'
+               + 'وبناءً على المادة (الثامنة عشرة) من نظام مجلس الشورى، الصادر بالأمر الملكي رقم (أ/91) بتاريخ 27 /8/ 1412هـ.\n'
+               + 'وبعد الاطلاع على قراري مجلس الشورى رقم (45/243) بتاريخ 21 /2/ 1443هـ، ورقم (7/36) بتاريخ 3 /4/ 1443هـ.\n'
+               + 'وبعد الاطلاع على قرار مجلس الوزراء رقم (283) بتاريخ 24 /5/ 1443هـ.\n'
+               + '\n'
+               + 'رسمنا بما هو آت:\n'
+               + '\n'
+               + 'أولاً: الموافقة على نظام الإثبات، بالصيغة المرافقة.\n'
+               + '\n'
+               + 'ثانياً: تعديل الفقرة (1) من المادة (الثامنة عشرة بعد المائتين) من نظام الإجراءات الجزائية الصادر بالمرسوم الملكي رقم (م/2) بتاريخ 22 /1/ 1435هـ، لتكون بالنص الآتي: «تطبق الأحكام الواردة في نظام المرافعات الشرعية وفي نظام الإثبات فيما لم يرد فيه حكم في هذا النظام بما لا يتعارض مع طبيعة القضايا الجزائية».\n'
+               + '\n'
+               + 'ثالثاً: تعديل المادة (الستين) من نظام المرافعات أمام ديوان المظالم، الصادر بالمرسوم الملكي رقم (م/3) بتاريخ 22 /1/ 1435هـ، لتكون بالنص الآتي: «تطبق على الدعاوى المرفوعة أمام محاكم ديوان المظالم أحكام نظام المرافعات الشرعية ونظام الإثبات فيما لم يرد فيه حكم في هذا النظام بما لا يتعارض مع طبيعة المنازعة الإدارية».\n'
+               + '\n'
+               + 'رابعاً: أن يسري التعديلان المشار إليهما في البندين (ثانياً) و(ثالثاً) من هذا المرسوم في تاريخ متزامن مع تاريخ نفاذ النظام المشار إليه في البند (أولاً) من هذا المرسوم.\n'
+               + '\n'
+               + 'خامساً: أنَّ كل إجراء من إجراءات الإثبات تم صحيحاً قبل نفاذ النظام -المشار إليه في البند (أولاً) من هذا المرسوم- يبقى صحيحاً.\n'
+               + '\n'
+               + 'سادساً: على سمو نائب رئيس مجلس الوزراء والوزراء ورؤساء الأجهزة المعنية المستقلة -كل فيما يخصه- تنفيذ مرسومنا هذا.\n'
+               + '\n'
+               + 'سلمان بن عبدالعزيز آل سعود',
   },
-  // ما كُتب نصاً قبل أداة التاريخ، ليُستبدل بالقيمة المنظَّمة في الدفاتر القائمة.
+  /* قيم يصحّحها الإدراج في الدفاتر القائمة: ما كُتب نصاً قبل أداة التاريخ،
+     وما لم يكن موجوداً أصلاً (الديباجة وأداة الإصدار وتاريخه). */
   superseded: {
     publishedAt: ['٤ / ٦ / ١٤٤٣هـ — ٧ يناير ٢٠٢٢م'],
     effectiveAt: ['بعد (مائة وثمانين) يوماً من تاريخ النشر'],
+    instrument:  [undefined, ''],
+    issuedAt:    [undefined, ''],
+    preamble:    [undefined, ''],
   },
   articles: [
   ["ith_1", "١", "الباب الأول — أحكام عامة", "", "", "تسري أحكام هذا النظام على المعاملات المدنية والتجارية."],
